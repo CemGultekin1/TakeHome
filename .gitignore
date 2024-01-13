@@ -1,0 +1,14 @@
+qr_takehome
+.env
+.ipynb_checkpoints
+__pycache__
+models
+inner_prods
+inner_prods_save
+temp
+features
+imgs
+*.pth
+*.png
+*.txt
+runs
