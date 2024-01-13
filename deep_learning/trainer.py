@@ -15,10 +15,9 @@ def criterion(ypred,y,probs):
     y[~mask] = 0
     rat = mask.sum()
     mse,sc2 = l2loss(ypred,y,mask,rat)  
-    
+    probs,wd = probs
     eps = 1e-5
     entropy = -torch.log(probs + eps)*probs - torch.log(1 - probs + eps)*(1 - probs)
-    # entropy = probs*(1-probs)
     entropy = entropy.mean(dim = [2,3])
     entropy = (entropy*mask).sum()/rat
     total =   mse + entropy

@@ -14,10 +14,12 @@ class EntropyControl:
     def __init__(self,maxcoeff) -> None:
         self.maxcoeff = maxcoeff
         self.coeff = 1.
-    def step(self,tr_r2,ts_r2):
-        if  (tr_r2-ts_r2) > (np.abs(tr_r2)+np.abs(ts_r2))*0.25:
+    def step(self,lrgst_prob):
+        if lrgst_prob < 0.9:
             self.coeff *= 2.
         self.coeff = np.minimum(self.coeff,self.maxcoeff)
+    def is_saturated(self,):
+        return self.coeff == self.maxcoeff
     def __call__(self,):
         return self.coeff
 
@@ -31,9 +33,10 @@ def main():
     parquet_files = [os.path.join(parquet_directory, f) for f in os.listdir(parquet_directory) if f.endswith('.parquet')]
     n = len(parquet_files)
     # np.random.shuffle(parquet_files)
+    per_cpu_files = 100
     parquet_partition = dict(
-        train = parquet_files[max((n - ncpu*40),100):],
-        val = parquet_files[:min(ncpu*40,100)]
+        train = parquet_files[max((n - ncpu*per_cpu_files),100):],
+        val = parquet_files[:min(ncpu*per_cpu_files,100)]
     )
 
     ntime_daily = 4
@@ -49,31 +52,23 @@ def main():
                         collate_fn= custom_collate)
 
     batch_size = max(ncpu,1)
-    per_request = 64
+    per_request = 128
     train_dataloader = get_loaders('train',ncpu = ncpu,batch_size=batch_size,per_request=per_request)
     val_dataloader = get_loaders('val',ncpu = ncpu,batch_size=batch_size,per_request=per_request)
-    width = 20
-    x_dim = 375+4
-    nfs = EntropyControl(128)
+    width = 16
+    x_dim = 375+ntime_daily
+    nfs = EntropyControl(256)
     
-    model = MultiCalibration(x_dim,t_dim = 4,n_feats = width,lyr_widths = [width]*5,stress_control=nfs)
+    model = MultiCalibration(x_dim,t_dim = ntime_daily,n_feats = width,lyr_widths = [width]*4,stress_control=nfs)
     # model.load_state_dict(torch.load('model_20240104-dummy-5.pth'))
     optimizer = torch.optim.Adam(model.parameters(), lr= 1e-3)
     writer = SummaryWriter()
-    # scheduler = StepLR(optimizer, step_size=1, gamma=0.5)
     scheduler = ReduceLROnPlateau(optimizer,mode = 'max',min_lr = 1e-7,patience = 5,factor = 0.1)
 
     
     trn = Trainer(model,optimizer,scheduler,train_dataloader,'train',writer,nfs)
     val = Trainer(model,optimizer,scheduler,val_dataloader,'val',writer,nfs)
 
-   
-    # x,t,y = next(iter(train_dataloader))
-    # x1 = model.fs1(x,t)
-    # x1 = x1[0]
-    # p1 = model.fs1._probs[0]
-
-    # best_val_loss = np.inf
     model_path = 'model_20240104-dummy.pth'
     for epoch in range(100):    
         lr = optimizer.param_groups[0]['lr']
@@ -82,8 +77,7 @@ def main():
         val_loss = val.run_epoch()
         torch.save(model.state_dict(), model_path.replace('.pth',f'-{epoch}.pth'))
         print(f"epoch = {epoch}\t\t train_loss = {train_loss['r2']},\t val_loss = {val_loss['r2']},lr = {lr}, entrcoef = {nfs()}")
-        # scheduler.step(val_loss['r2'])
-        nfs.step(train_loss['r2'],val_loss['r2'])
+        nfs.step(train_loss['lrgst_prob'])
         # scheduler.step()
         writer.flush()
     writer.close()

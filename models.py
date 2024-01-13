@@ -30,19 +30,24 @@ class FeatureSelector(nn.Module):
         self.in_dims = in_dims
         self.out_dims = out_dims
         self.nfeats = nfeats
-        lyr_widths = [in_dims,32,32,self.out_dims*self.nfeats]        
-        self.sequential = create_sequential(lyr_widths,p = 0)      
+        # lyr_widths = [in_dims,32,32,self.out_dims*self.nfeats]     
+        self.attention = nn.Linear(in_dims,self.out_dims*self.nfeats)   
+        # self.sequential = create_sequential(lyr_widths,p = 0)      
         self.softmax = nn.Softmax(dim = 1)        
         self.stress_control = stress_control
         self._probs = None
     def forward(self,xt,t): 
-        h = self.sequential(t)
+        # h = self.sequential(t)
+        h = self.attention(t)
         probs = h.reshape([-1,self.out_dims,self.nfeats])
         if self.stress_control is None:
             probs = self.softmax(probs)
         else:
             st = self.stress_control()
             probs = self.softmax(probs*st)
+        if not self.training or self.stress_control.is_saturated():
+            probs = probs == torch.amax(probs,dim = 1,keepdim=True)
+            probs = probs.type(torch.float32)
         y = torch.einsum('ijk,ij->ik',probs,xt)/np.sqrt(self.out_dims)
         return y,probs
 class FCNN(nn.Module):
@@ -51,10 +56,11 @@ class FCNN(nn.Module):
         self.x_dim = x_dim
         lyr_widths[0] = x_dim
         lyr_widths[-1] = out_dim
-        self.sequential = create_sequential(lyr_widths)
+        self.sequential = nn.Linear(x_dim,out_dim)
+        # self.sequential = create_sequential(lyr_widths)
     def forward(self,x):  
         y = self.sequential(x)
-        return y
+        return y,torch.square(self.sequential.weight.data).mean()
 
 class MultiCalibration(nn.Module):
     net_class = FCNN
@@ -69,9 +75,10 @@ class MultiCalibration(nn.Module):
         x,t = args
         x2,probs2 = self.fs2(x,t)
         x1,probs1 = self.fs1(x,t)
-        y1 = self.net1.forward(x1)
-        y2 = self.net2.forward(x2)
-        return torch.cat([y1,y2],dim = 1),torch.stack([probs1,probs2],dim = 1)
+        y1,wd1 = self.net1.forward(x1)
+        y2,wd2 = self.net2.forward(x2)
+        wd = (wd1 + wd2)/2
+        return torch.cat([y1,y2],dim = 1),(torch.stack([probs1,probs2],dim = 1),wd)
     
     
 class StochasticFCNN(FCNN):
