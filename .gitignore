@@ -12,3 +12,5 @@ imgs
 *.png
 *.txt
 runs
+*.gz
+*.ext3

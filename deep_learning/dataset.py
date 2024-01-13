@@ -15,17 +15,13 @@ class PriceTransform(BaseData):
         self._normalization = None
         self.ntime_daily = ntime_daily
         self.return_order = return_order
-        self.feature_transform = DataCleaner(allow_bad_x_density=0.,allow_bad_y_density=0.,remove_rows=False,fill_value=np.nan)    
-        self.data_cleaner = self.feature_transform#DataCleaner(allow_bad_x_density=0.,remove_rows=False,fill_value=np.nan)   
-        # ctgr = Categoricals().determine_ctgr()
-        # self.feature_transform = SelectedFeatures(ctgr)
-        # self.feature_transform.gather_indices()
-                
+        self.feature_transform = DataCleaner(allow_bad_x_density=0.3,allow_bad_y_density=0.,remove_rows=False,fill_value=np.nan)    
+        self.data_cleaner = self.feature_transform                        
     @property
     def normalization_consts(self,):
         if self._normalization is None:
             norm = Normalization(n_type = 'absolute',\
-                feat_transform = None)#self.feature_transform)
+                feat_transform = None)
             if not norm.is_available_in_file():
                 norm.compute_and_save_normalizations()
             normdict = norm.collect_normalizations_from_file()

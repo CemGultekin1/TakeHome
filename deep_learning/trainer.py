@@ -1,4 +1,5 @@
 from collections import defaultdict
+from deep_learning.pack import ModelPack
 from models import MultiCalibration
 import torch
 import numpy as np
@@ -15,12 +16,12 @@ def criterion(ypred,y,probs):
     y[~mask] = 0
     rat = mask.sum()
     mse,sc2 = l2loss(ypred,y,mask,rat)  
-    probs,wd = probs
+    probs = probs
     eps = 1e-5
     entropy = -torch.log(probs + eps)*probs - torch.log(1 - probs + eps)*(1 - probs)
     entropy = entropy.mean(dim = [2,3])
     entropy = (entropy*mask).sum()/rat
-    total =   mse + entropy
+    total =   mse + entropy*0.01
     metrics = {}
     
     lrgst_prob = torch.sort(probs.detach(),dim = 2,descending = True)[0][:,:,0,:]
@@ -53,60 +54,65 @@ def stochastic_criterion(ypred,y,model):
     return err,badflag,metrics
 
 class Trainer:
-    def __init__(self,model:MultiCalibration,optimizer,lrscheduler,data_loader,tag,writer,nfeats_scheduler):
-        self.optimizer = optimizer
-        self.lrscheduler = lrscheduler
-        self.model = model
+    def __init__(self,models:ModelPack,data_loader,tag):
+        self.models = models
         self.data_loader = data_loader
         self.tag = tag
-        self.writer = writer
         self.counter = 0
-        self.nfeats_scheduler = nfeats_scheduler
         self.epoch = 0
     def run_epoch(self,):
-        metrics = defaultdict(lambda:0)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        [mdl.model.to(device) for mdl in self.models]
         train_flag = 'train' in self.tag
         if train_flag:
-            self.model.train()
+            [mdl.model.train() for mdl in self.models]
         else:
-            self.model.eval()
+            [mdl.model.eval() for mdl in self.models]
         nupdates = 0
-        for xt,t,y in self.data_loader:
-            if train_flag:
-                self.optimizer.zero_grad()
-                ypred,probs = self.model(xt,t)
-            else:
-                with torch.no_grad():
-                    ypred,probs = self.model(xt,t)
-            total,metric_update = criterion(ypred,y,probs)
-            nupdates+=1        
-            self.counter += 1
-            
-            if train_flag:
-                total.backward()
-                # torch.nn.utils.clip_grad_norm_(self.model.parameters(),0.1)
-                self.optimizer.step()
-            metric_updates = tuple(metric_update.items())
-            for key,val in metric_updates:
-                metrics[key] += val
-                if key == 'sc2':
-                    val = 1 - metrics['mse']/metrics[key]
-                    key = 'r2'
-                else:
-                    val = metrics[key]/nupdates
+        for args in self.data_loader:
+            xt,t,y = (g.to(device) for g in args)
+            for i,model_optim in enumerate(self.models):
+                optimizer = model_optim.optimizer
+                model = model_optim.model
+                writer = model_optim.writer
+                metrics = model_optim.metrics
                 if train_flag:
-                    self.writer.add_scalar(f"per-update-{self.tag}/{key}", val, self.counter)
-                    if val > 0:
-                        self.writer.add_scalar(f"per-update-{self.tag}/{key}-log-scale", np.log10(val), self.counter)        
-        metrics['r2'] = 1 - metrics['mse']/metrics['sc2']
-        metric_updates = list(metrics.items())
-        for key,val in metric_updates:
-            if key != 'r2':
-                val = val/nupdates
-            metrics[key] = val
-            self.writer.add_scalar(f"{self.tag}/{key}", val, self.epoch)
-            if val > 0:
-                self.writer.add_scalar(f"{self.tag}/{key}-log-scale", np.log10(val), self.epoch)
+                    optimizer.zero_grad()
+                    ypred,probs = model(xt,t)
+                else:
+                    with torch.no_grad():
+                        ypred,probs = model(xt,t)
+                total,metric_update = criterion(ypred,y,probs)
+                if i== 0:
+                    nupdates+=1        
+                    self.counter += 1
+                
+                if train_flag:
+                    total.backward()
+                    optimizer.step()
+                metric_updates = tuple(metric_update.items())
+                for key,val in metric_updates:
+                    metrics[key] += val
+                    if key == 'sc2':
+                        val = 1 - metrics['mse']/metrics[key]
+                        key = 'r2'
+                    else:
+                        val = metrics[key]/nupdates
+                    if train_flag:
+                        writer.add_scalar(f"per-update-{self.tag}/{key}", val, self.counter)
+                        if val > 0:
+                            writer.add_scalar(f"per-update-{self.tag}/{key}-log-scale", np.log10(val), self.counter)        
+        for mdl_opt in self.models:
+            metrics = mdl_opt.metrics
+            writer = mdl_opt.writer
+            metrics['r2'] = 1 - metrics['mse']/(metrics['sc2']+1e-19)
+            metric_updates = list(metrics.items())
+            for key,val in metric_updates:
+                if key != 'r2':
+                    val = val/nupdates
+                metrics[key] = val
+                writer.add_scalar(f"{self.tag}/{key}", val, self.epoch)
+                if val > 0:
+                    writer.add_scalar(f"{self.tag}/{key}-log-scale", np.log10(val), self.epoch)
         self.epoch+=1
-        return metrics
 
