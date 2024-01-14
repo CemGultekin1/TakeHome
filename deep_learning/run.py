@@ -22,7 +22,7 @@ def main():
     parquet_files = [os.path.join(parquet_directory, f) for f in os.listdir(parquet_directory) if f.endswith('.parquet')]
     n = len(parquet_files)
     # np.random.shuffle(parquet_files)
-    per_cpu_files = 1
+    per_cpu_files = 100
     parquet_partition = dict(
         train = parquet_files[max((n - ncpu*per_cpu_files),100):],
         val = parquet_files[:min(ncpu*per_cpu_files,100)]
@@ -45,7 +45,7 @@ def main():
     train_dataloader = get_loaders('train',ncpu = ncpu,batch_size=batch_size,per_request=per_request)
     val_dataloader = get_loaders('val',ncpu = ncpu,batch_size=batch_size,per_request=per_request)
 
-    models = ModelPack([2,4,8,16,32])
+    models = ModelPack([2,4,8,16,32,64])
     
     trn = Trainer(models,train_dataloader,'train')
     val = Trainer(models,val_dataloader,'val')
@@ -53,9 +53,9 @@ def main():
     for epoch in range(100):    
         [mdl.begin_epoch(epoch) for mdl in models]
         trn.run_epoch()
-        [mdl.end_train(epoch) for mdl in models]
+        [mdl.end_train_epoch(epoch) for mdl in models]
         val.run_epoch()
-        [mdl.end_epoch() for mdl in models]
+        [mdl.end_validation_epoch() for mdl in models]
     [mdl.close() for mdl in models]
 
 if __name__ == '__main__':
