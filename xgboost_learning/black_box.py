@@ -32,10 +32,10 @@ class BlackBoxFunctor:
         for i,inds in enumerate(cv_splits):
             print(f'part - {i}',flush=True)
             dfsplit = dask_dataset.partitions[inds]
-            # print(f'computing sc2 part_{i}',flush=True)
-            # sc2 = np.mean(np.power(dfsplit[ycol],2)).compute()
-            # self.metrics.append(R2Metric(sc2))   
-            self.metrics.append(RMSE())    
+            print(f'computing sc2 part_{i}',flush=True)
+            sc2 = np.mean(np.power(dfsplit[ycol],2)).compute()
+            self.metrics.append(R2Metric(sc2))   
+            # self.metrics.append(RMSE())    
             print(f'collecting part_{i} xgb.dask.DaskDMatrix',flush=True)     
             dsplit = xgb.dask.DaskDMatrix(self.client, dfsplit[self.xcols], dfsplit[self.ycol])
             cv_datasets.append((dsplit,f'part_{i}'))
