@@ -58,9 +58,10 @@ class BayesSearchParams:
     @property
     def pbounds(self,):
         return self.params
-                
+
 def main():
-    df,xcols,_ = get_clean_data(50)
+    df,xcols,ycol = get_clean_data(2)
+
     param_transform_pairs = dict(
         log_eta = ([-5,0],lambda x: np.power(10.,x),'eta'),
         gamma = [0,8],
@@ -88,9 +89,9 @@ def main():
     for i in range(100):
         params = optimizer.suggest(utility)
         params,transformed_params = bsp(**params)
-        target = bbf(**transformed_params)
+        r2 = bbf(**transformed_params)
         try:
-            optimizer.register(params = params, target = -target)
+            optimizer.register(params = params, target = r2)
         except:
             pass
 
