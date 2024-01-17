@@ -40,7 +40,7 @@ class ModelOptimizerPair:
     def end_train_epoch(self,epoch:int):
         model_path = self.model_path.replace('epoch',str(epoch))
         torch.save(self.model.state_dict(), model_path.replace('.pth',f'-{epoch}.pth'))
-        self.entropy_control.step(self.metrics['lrgst_prob'])        
+        self.entropy_control.step(self.metrics['lrgst_prob'])
         self.writer.flush()
         self.metrics = defaultdict(lambda :0)
     def begin_epoch(self,epoch):
