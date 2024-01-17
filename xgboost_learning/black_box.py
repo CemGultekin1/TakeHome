@@ -17,7 +17,7 @@ class RMSE:
         return rmse
 
 class BlackBoxFunctor:
-    def __init__(self,dask_dataset,xcols,ycol,n_cv,n_iter,**xgb_params) -> None:
+    def __init__(self,dask_dataset,xcols,ycol,n_fold,n_iter,**xgb_params) -> None:
         print(f'cluster = dask.distributed.LocalCluster()',flush = True)
         cluster = dask.distributed.LocalCluster()
         self.client = dask.distributed.Client(cluster)
@@ -25,27 +25,15 @@ class BlackBoxFunctor:
         self.ycol = ycol
         self.n_iter = n_iter
         self.xgb_params = xgb_params
-        self.n_cv = n_cv
-        self.metrics = []
-        cv_splits = np.array_split(np.arange(dask_dataset.npartitions),n_cv)
-        cv_datasets = []
-        for i,inds in enumerate(cv_splits):
-            print(f'part - {i}',flush=True)
-            dfsplit = dask_dataset.partitions[inds]
-            # print(f'computing sc2 part_{i}',flush=True)
-            # sc2 = np.mean(np.power(dfsplit[ycol],2)).compute()
-            # self.metrics.append(R2Metric(sc2))   
-            self.metrics.append(RMSE())    
-            print(f'computing part_{i} xgb.dask.DaskDMatrix',flush=True)     
-            dsplit = xgb.dask.DaskDMatrix(self.client, dfsplit[self.xcols], dfsplit[self.ycol])
-            cv_datasets.append((dsplit,f'part_{i}'))
-        self.cv_datasets = cv_datasets
+        self.n_fold = n_fold       
+        self.dtrain = xgb.dask.DaskDMatrix(self.client, dask_dataset[self.xcols], dask_dataset[self.ycol])
         
         
     def train_xgboost(self,dtrain,eval,metrics,**kwargs):
         params = self.xgb_params.copy()
         params.update(kwargs)
-        output = xgb.dask.train(self.client,params,dtrain,evals=eval,num_boost_round = 200,early_stopping_rounds=20,)
+        output = xgb.dask.cv(self.client,params,dtrain,num_boost_round = 200,early_stopping_rounds=20,nfold = self.n_fold)
+        print(output)
         it = output['booster'].best_iteration
         scr = []
         for metric,eval_dict in zip(metrics,output['history'].values()):

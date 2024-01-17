@@ -17,11 +17,16 @@ def get_clean_data(nparts):
     cols = df.columns
     xcols = [c for c in cols if 'X' in c]
     ycols = [c for c in cols if 'Y1' in c]
+    maxtime = df['time'].max().compute()
+    mintime = df['time'].min().compute()
+    ntime = 4
+    df = df.assign(reltime = lambda x: np.floor((x['time'] - mintime)/(maxtime - mintime)*ntime))
+    df = df.drop(columns = ['time'])
     def clean(row:pandas.Series):
         row.loc[np.abs(row) > 999] = np.nan
-        if row['Q1'] < 0.99999 or np.any(np.isnan(row[ycols])):
-            row.iloc[:] = np.nan        
-        row = row.drop(columns=['Q1'])
+        if row['Q1'] < 0.99999 or np.any(np.isnan(row[ycols])) or np.mean(np.isnan(row)) > 0.3:
+            row.iloc[:] = np.nan              
+        row = row.drop(columns=['Q1'])        
         return row
     df = df.apply(clean,axis = 1,by_row=False).fillna(0)
     return df,xcols,ycols
@@ -88,7 +93,7 @@ def main():
     else:
         load_logs(optimizer, logs=[log_file])
         logger = JSONLogger(path=log_file,reset=False)
-    utility = UtilityFunction(kind = "ucb", kappa_decay= 0.95, xi = 0.01,kappa_decay_delay=10)
+    utility = UtilityFunction(kind = "ucb", kappa_decay= 0.95, xi = 0.01,kappa_decay_delay=20)
     while True:
         params = optimizer.suggest(utility)
         params,transformed_params = bsp(**params)
