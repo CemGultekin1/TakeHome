@@ -67,21 +67,23 @@ class BayesSearchParams:
 def main():
     nfiles = 200
     ncv = 3
-    niter = 10
+    niter = 1
     df,xcols,_ = get_clean_data(nfiles)
-
+    power_of_ten = lambda x:np.power(10,x)
+    round_to_int = lambda x:int(x)
     param_transform_pairs = dict(
-        log_eta = ([-5,0],lambda x: np.exp(x),'eta'),
-        gamma = [0,8],
-        max_depth = ([2,12],lambda x:int(x)),    
-        log_colsample_bytree = ([-3,0],lambda x: np.exp(x),'colsample_bytree'),
-        log_colsample_bylevel = ([-3,0],lambda x: np.exp(x),'colsample_bylevel'),
-        log_colsample_bynode = ([-3,0],lambda x: np.exp(x),'colsample_bynode'),
+        log10_eta = ([-4,-1],power_of_ten,'eta'),
+        gamma = [0,100],
+        max_depth = ([3,10],round_to_int),    
+        log10_alpha = ([-5,1],power_of_ten,'alpha'),
+        log10_lambda = ([-5,1],power_of_ten,'lambda'),
+        log10_subsample = ([-1,0],power_of_ten,'subsample'),
+        log10_min_child_weight = ([0,5],lambda x:round_to_int(power_of_ten(x)),'min_child_weight')
     )
     bsp = BayesSearchParams(**param_transform_pairs)
     
 
-    params = {"objective": "reg:squarederror"}
+    params = {"objective": "reg:squarederror","max_bin":2**14}
     bbf = BlackBoxFunctor(df,xcols,['Y1'],ncv,niter,**params)
     optimizer = BayesianOptimization(f = None, 
                                     pbounds = bsp.pbounds, 
