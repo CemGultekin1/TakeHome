@@ -25,10 +25,10 @@ def get_clean_data(nparts):
     def clean(row:pandas.Series):
         row.loc[np.abs(row) > 999] = np.nan
         if row['Q1'] < 0.99999 or np.any(np.isnan(row[ycols])) or np.mean(np.isnan(row)) > 0.3:
-            row.iloc[:] = np.nan              
+            row.iloc[:] = 0.
         row = row.drop(columns=['Q1'])        
         return row
-    df = df.apply(clean,axis = 1,by_row=False).fillna(0)
+    df = df.apply(clean,axis = 1,by_row=False)
     return df,xcols,ycols
 
 class BayesSearchParams:

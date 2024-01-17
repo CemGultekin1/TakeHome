@@ -1,3 +1,7 @@
 cluster = dask.distributed.LocalCluster()
 part - 0
 computing sc2 part_0
+collecting part_0 xgb.dask.DaskDMatrix
+part - 1
+computing sc2 part_1
+collecting part_1 xgb.dask.DaskDMatrix
