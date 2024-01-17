@@ -60,21 +60,24 @@ class BayesSearchParams:
         return self.params
 
 def main():
-    df,xcols,ycol = get_clean_data(2)
+    nfiles = 2
+    ncv = 2
+    niter = 10
+    df,xcols,_ = get_clean_data(nfiles)
 
     param_transform_pairs = dict(
-        log_eta = ([-5,0],lambda x: np.power(10.,x),'eta'),
+        log_eta = ([-5,0],lambda x: np.exp(x),'eta'),
         gamma = [0,8],
         max_depth = ([2,12],lambda x:int(x)),    
-        colsample_bytree = [0,1],
-        colsample_bylevel = [0,1],
-        colsample_bynode = [0,1]
+        log_colsample_bytree = ([-3,0],lambda x: np.exp(x),'colsample_bytree'),
+        log_colsample_bylevel = ([-3,0],lambda x: np.exp(x),'colsample_bylevel'),
+        log_colsample_bynode = ([-3,0],lambda x: np.exp(x),'colsample_bynode'),
     )
     bsp = BayesSearchParams(**param_transform_pairs)
     
 
     params = {"objective": "reg:squarederror"}
-    bbf = BlackBoxFunctor(df,xcols,['Y1'],2,**params)
+    bbf = BlackBoxFunctor(df,xcols,['Y1'],ncv,niter,**params)
     optimizer = BayesianOptimization(f = None, 
                                     pbounds = bsp.pbounds, 
                                     verbose = 2, random_state = 0)
@@ -85,8 +88,8 @@ def main():
     else:
         load_logs(optimizer, logs=[log_file])
         logger = JSONLogger(path=log_file,reset=False)
-    utility = UtilityFunction(kind = "ucb", kappa_decay= 0.9, xi = 0.01,kappa_decay_delay=10)
-    for i in range(100):
+    utility = UtilityFunction(kind = "ucb", kappa_decay= 0.95, xi = 0.01,kappa_decay_delay=10)
+    while True:
         params = optimizer.suggest(utility)
         params,transformed_params = bsp(**params)
         r2 = bbf(**transformed_params)
