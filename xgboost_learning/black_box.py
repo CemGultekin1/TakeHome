@@ -45,7 +45,7 @@ class BlackBoxFunctor:
     def train_xgboost(self,dtrain,eval,metrics,**kwargs):
         params = self.xgb_params.copy()
         params.update(kwargs)
-        output = xgb.dask.train(self.client,params,dtrain,evals=eval,num_boost_round = 200,early_stopping_rounds=20,)
+        output = xgb.dask.train(self.client,params,dtrain,evals=eval,num_boost_round = 200,early_stopping_rounds=5)#,verbosity = 0)
         it = output['booster'].best_iteration
         scr = []
         for metric,eval_dict in zip(metrics,output['history'].values()):

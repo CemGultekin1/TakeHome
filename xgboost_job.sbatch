@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=10
-#SBATCH --mem=60GB
+#SBATCH --mem=80GB
 #SBATCH --output=xg.out
 #SBATCH --error=xg.err
 #SBATCH --time=18:00:00

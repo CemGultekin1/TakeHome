@@ -83,7 +83,7 @@ def main():
     bsp = BayesSearchParams(**param_transform_pairs)
     
 
-    params = {"objective": "reg:squarederror","max_bin":2**14}
+    params = {"objective": "reg:squarederror","max_bin":2**12}
     bbf = BlackBoxFunctor(df,xcols,['Y1'],ncv,niter,**params)
     optimizer = BayesianOptimization(f = None, 
                                     pbounds = bsp.pbounds, 
