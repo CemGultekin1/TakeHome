@@ -65,7 +65,7 @@ class BayesSearchParams:
         return self.params
 
 def main():
-    nfiles = 2
+    nfiles = 200
     ncv = 3
     niter = 10
     df,xcols,_ = get_clean_data(nfiles)
