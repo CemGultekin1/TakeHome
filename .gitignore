@@ -15,4 +15,3 @@ runs
 *.gz
 *.ext3
 logs
-bayes_logs
