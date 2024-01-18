@@ -1,7 +1,7 @@
 from data.base import read_parquet
 import pandas
 import numpy as np
-
+import sys
 from bayes_opt import BayesianOptimization, UtilityFunction
 import warnings
 warnings.filterwarnings("ignore")
@@ -12,11 +12,11 @@ from bayes_opt.util import load_logs
 import os 
 from xgboost_learning.black_box import BlackBoxFunctor
 
-def get_clean_data(nparts):
+def get_clean_data(nparts,ynum):
     df = read_parquet().select_dtypes('number').partitions[:nparts]
     cols = df.columns
     xcols = [c for c in cols if 'X' in c]
-    ycols = [c for c in cols if 'Y1' in c]
+    ycols = [c for c in cols if f'Y{ynum}' in c]
     maxtime = df['time'].max().compute()
     mintime = df['time'].min().compute()
     ntime = 4
@@ -24,9 +24,9 @@ def get_clean_data(nparts):
     df = df.drop(columns = ['time'])
     def clean(row:pandas.Series):
         row.loc[np.abs(row) > 999] = np.nan
-        if row['Q1'] < 0.99999 or np.any(np.isnan(row[ycols])) or np.mean(np.isnan(row)) > 0.3:
+        if row[f'Q{ynum}'] < 0.99999 or np.any(np.isnan(row[ycols])) or np.mean(np.isnan(row)) > 0.3:
             row.iloc[:] = 0.
-        row = row.drop(columns=['Q1'])        
+        row = row.drop(columns=[f'Q{ynum}'])        
         return row
     df = df.apply(clean,axis = 1,by_row=False)
     return df,xcols,ycols
@@ -66,9 +66,12 @@ class BayesSearchParams:
 
 def main():
     nfiles = 60
-    ncv = 3
-    niter = 1
-    df,xcols,_ = get_clean_data(nfiles)
+    ncv = 2
+    niter = 4
+    ynum = int(sys.argv[1])
+    random_state = 0
+    
+    df,xcols,_ = get_clean_data(nfiles,ynum)
     power_of_ten = lambda x:np.power(10,x)
     round_to_int = lambda x:int(x)
     param_transform_pairs = dict(
@@ -78,23 +81,24 @@ def main():
         log10_alpha = ([-5,1],power_of_ten,'alpha'),
         log10_lambda = ([-5,1],power_of_ten,'lambda'),
         log10_subsample = ([-1,0],power_of_ten,'subsample'),
-        log10_min_child_weight = ([0,5],lambda x:round_to_int(power_of_ten(x)),'min_child_weight')
+        log10_min_child_weight = ([0,5],lambda x:round_to_int(power_of_ten(x)),'min_child_weight'),
+        log10_colsample_bytree = ([-1,0],power_of_ten,'colsample_bytree')
     )
     bsp = BayesSearchParams(**param_transform_pairs)
-    
 
-    params = {"objective": "reg:squarederror","max_bin":2**12}
-    bbf = BlackBoxFunctor(df,xcols,['Y1'],ncv,niter,**params)
+    params = {"objective": "reg:squarederror"}
+    bbf = BlackBoxFunctor(df,xcols,[f'Y{ynum}'],ncv,niter,**params)
     optimizer = BayesianOptimization(f = None, 
                                     pbounds = bsp.pbounds, 
-                                    verbose = 2, random_state = 0)
-    log_file = 'bayesian_log'
+                                    verbose = 2, random_state = random_state)
+    log_file = f'bayesian_log{ynum}'
     if not os.path.exists(log_file):
         logger = JSONLogger(path=log_file,reset=False)
         optimizer.subscribe(Events.OPTIMIZATION_STEP, logger)
     else:
         load_logs(optimizer, logs=[log_file])
         logger = JSONLogger(path=log_file,reset=False)
+    
     utility = UtilityFunction(kind = "ucb", kappa_decay= 0.95, xi = 0.01,kappa_decay_delay=20)
     while True:
         params = optimizer.suggest(utility)
