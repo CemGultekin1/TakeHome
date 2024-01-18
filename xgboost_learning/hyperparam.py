@@ -65,9 +65,9 @@ class BayesSearchParams:
         return self.params
 
 def main():
-    nfiles = 60
+    nfiles = 20
     ncv = 2
-    niter = 4
+    niter = 10
     ynum = int(sys.argv[1])
     random_state = 0
     
