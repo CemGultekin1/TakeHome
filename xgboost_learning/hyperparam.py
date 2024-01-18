@@ -65,23 +65,24 @@ class BayesSearchParams:
         return self.params
 
 def main():
-    nfiles = 20
+    nfiles = 128
     ncv = 2
-    niter = 10
-    ynum = int(sys.argv[1])
-    random_state = 0
-    
+    niter = 4
+    index = int(sys.argv[1])
+    ynum = (index - 1) % 2 + 1
+    random_state = index//2
+    print(f'nfiles = {nfiles} ncv = {ncv} niter = {niter} ynum = {ynum}, random_state = {random_state}',flush = True)
     df,xcols,_ = get_clean_data(nfiles,ynum)
     power_of_ten = lambda x:np.power(10,x)
     round_to_int = lambda x:int(x)
     param_transform_pairs = dict(
-        log10_eta = ([-4,-1],power_of_ten,'eta'),
-        gamma = [0,100],
-        max_depth = ([3,10],round_to_int),    
+        log10_eta = ([-4,0],power_of_ten,'eta'),
+        gamma = [0,200],
+        max_depth = ([2,10],round_to_int),    
         log10_alpha = ([-5,1],power_of_ten,'alpha'),
         log10_lambda = ([-5,1],power_of_ten,'lambda'),
+        log10_min_child_weight = ([0,5],lambda x:round_to_int(power_of_ten(x)),'min_child_weight'),        
         log10_subsample = ([-1,0],power_of_ten,'subsample'),
-        log10_min_child_weight = ([0,5],lambda x:round_to_int(power_of_ten(x)),'min_child_weight'),
         log10_colsample_bytree = ([-1,0],power_of_ten,'colsample_bytree')
     )
     bsp = BayesSearchParams(**param_transform_pairs)
@@ -90,8 +91,10 @@ def main():
     bbf = BlackBoxFunctor(df,xcols,[f'Y{ynum}'],ncv,niter,**params)
     optimizer = BayesianOptimization(f = None, 
                                     pbounds = bsp.pbounds, 
-                                    verbose = 2, random_state = random_state)
-    log_file = f'bayesian_log{ynum}'
+                                    verbose = 2, \
+                                    random_state = random_state,\
+                                    allow_duplicate_points = True)
+    log_file = f'bayes_logs/bayesian_y{ynum}_rnd{random_state}'
     if not os.path.exists(log_file):
         logger = JSONLogger(path=log_file,reset=False)
         optimizer.subscribe(Events.OPTIMIZATION_STEP, logger)
@@ -103,9 +106,9 @@ def main():
     while True:
         params = optimizer.suggest(utility)
         params,transformed_params = bsp(**params)
-        r2 = bbf(**transformed_params)
+        negrmse = bbf(**transformed_params)
         try:
-            optimizer.register(params = params, target = r2)
+            optimizer.register(params = params, target = negrmse)
         except:
             pass
 

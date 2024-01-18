@@ -2,12 +2,12 @@
 #SBATCH --job-name=xgboost
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=10
-#SBATCH --mem=80GB
-#SBATCH --output=xg.out
-#SBATCH --error=xg.err
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=60GB
 #SBATCH --time=24:00:00
-#SBATCH --array=1-2
+#SBATCH --array=2,4,6,8,10,12,14,16,18,20
+#SBATCH --output=/scratch/cg3306/new_loc/TakeHome/logs/xg_%a.out
+#SBATCH --error=/scratch/cg3306/new_loc/TakeHome/logs/xg_%a.err
 
 module purge
 singularity exec --nv --overlay overlay-15GB-500K.ext3:ro\
