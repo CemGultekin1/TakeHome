@@ -42,18 +42,25 @@ class BlackBoxFunctor:
         self.cv_datasets = cv_datasets
         
         
-    def train_xgboost(self,dtrain,eval,metrics,**kwargs):
+    def train_xgboost(self,dtrain,eval,metrics,ptgt_pairs,**kwargs):
         params = self.xgb_params.copy()
         params.update(kwargs)
-        output = xgb.dask.train(self.client,params,dtrain,evals=eval,num_boost_round = 1000,early_stopping_rounds=10)
-        it = output['booster'].best_iteration
-        scr = []
+        num_boost_round = params.pop('num_boost_round')
+        output = xgb.dask.train(self.client,params,dtrain,evals=eval,num_boost_round = num_boost_round)#,early_stopping_rounds=10)
+        # it = output['booster'].best_iteration
+        
         for metric,eval_dict in zip(metrics,output['history'].values()):
-            scr.append(metric(eval_dict['rmse'][it]))
-        return scr
+            ntrees = len(eval_dict['rmse'])
+            break
+        for it in range(ntrees):
+            if it not in ptgt_pairs:
+                ptgt_pairs[it] = []
+            for metric,eval_dict in zip(metrics,output['history'].values()):
+                ptgt_pairs[it].append(metric(eval_dict['rmse'][it]))
+            
     def __call__(self,**kwargs_):
         kwargs = kwargs_.copy()
-        scr = []
+        dict_returns = {}
         for i in range(1):#self.n_cv):
             dtrain = self.cv_datasets[i][0]
             evals = self.cv_datasets.copy()
@@ -62,6 +69,8 @@ class BlackBoxFunctor:
             submetrics.pop(i)
             for seed in range(self.n_iter):
                 kwargs['random_state'] = seed
-                scr.extend(self.train_xgboost(dtrain,evals,submetrics,**kwargs))
-        return np.mean(scr)
+                self.train_xgboost(dtrain,evals,submetrics,dict_returns,**kwargs)
+        for key in dict_returns.keys():
+            dict_returns[key] = np.mean(dict_returns[key])            
+        return dict_returns
             
