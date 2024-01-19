@@ -64,6 +64,19 @@ class BayesSearchParams:
     def pbounds(self,):
         return self.params
 
+power_of_ten = lambda x:np.power(10,x)
+round_to_int = lambda x:int(x)
+param_transform_pairs = dict(
+    log10_eta = ([-4,0],power_of_ten,'eta'),
+    gamma = [0,200],
+    max_depth = ([2,10],round_to_int),    
+    log10_alpha = ([-5,1],power_of_ten,'alpha'),
+    log10_lambda = ([-5,1],power_of_ten,'lambda'),
+    log10_min_child_weight = ([0,5],lambda x:round_to_int(power_of_ten(x)),'min_child_weight'),        
+    log10_subsample = ([-1,0],power_of_ten,'subsample'),
+    log10_colsample_bytree = ([-1,0],power_of_ten,'colsample_bytree')
+)
+
 def main():
     nfiles = 128
     ncv = 2
@@ -73,18 +86,7 @@ def main():
     random_state = index//2
     print(f'nfiles = {nfiles} ncv = {ncv} niter = {niter} ynum = {ynum}, random_state = {random_state}',flush = True)
     df,xcols,_ = get_clean_data(nfiles,ynum)
-    power_of_ten = lambda x:np.power(10,x)
-    round_to_int = lambda x:int(x)
-    param_transform_pairs = dict(
-        log10_eta = ([-4,0],power_of_ten,'eta'),
-        gamma = [0,200],
-        max_depth = ([2,10],round_to_int),    
-        log10_alpha = ([-5,1],power_of_ten,'alpha'),
-        log10_lambda = ([-5,1],power_of_ten,'lambda'),
-        log10_min_child_weight = ([0,5],lambda x:round_to_int(power_of_ten(x)),'min_child_weight'),        
-        log10_subsample = ([-1,0],power_of_ten,'subsample'),
-        log10_colsample_bytree = ([-1,0],power_of_ten,'colsample_bytree')
-    )
+    
     bsp = BayesSearchParams(**param_transform_pairs)
 
     params = {"objective": "reg:squarederror"}
