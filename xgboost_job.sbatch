@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=60GB
 #SBATCH --time=24:00:00
-#SBATCH --array=2,4,6,8,10,12,14,16,18,20
+#SBATCH --array=1-20
 #SBATCH --output=/scratch/cg3306/new_loc/TakeHome/logs/xg_%a.out
 #SBATCH --error=/scratch/cg3306/new_loc/TakeHome/logs/xg_%a.err
 
