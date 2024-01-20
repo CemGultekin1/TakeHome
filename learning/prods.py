@@ -49,8 +49,6 @@ def single_time_index(df,t):
         dfsp = df_arr[sp,:]
         x = dfsp[:,xinds]
         y = dfsp[:,yinds]
-        x = np.where(np.isnan(x),0,x)
-        y = np.where(np.isnan(y),0,y)
         xx = x.T@x
         xy = x.T@y
         yy = y.T@y
