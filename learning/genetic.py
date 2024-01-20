@@ -138,12 +138,12 @@ def run_gen_alg(ti,yi):
     fitness_fn.reduc(tol = 1e-5)
     algparams = {'max_num_iteration': None,\
                 'population_size':1000,\
-                'mutation_probability':0.1,\
+                'mutation_probability':1./300,\
                 'elit_ratio': 0.01,\
                 'crossover_probability': 0.5,\
                 'parents_portion': 0.3,\
                 'crossover_type':'one_point',\
-                'max_iteration_without_improv':100,}
+                'max_iteration_without_improv':200,}
     model = ga(fitness_fn,fitness_fn.ndim,variable_type='bool',progress_bar = False,convergence_curve = False,algorithm_parameters=algparams)
     model.run()
     solution=model.output_dict
