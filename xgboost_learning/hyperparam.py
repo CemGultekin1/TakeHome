@@ -2,33 +2,31 @@ from data.base import read_parquet
 import pandas
 import numpy as np
 import sys
-from bayes_opt import BayesianOptimization, UtilityFunction
+
 import warnings
 warnings.filterwarnings("ignore")
-
+from bayes_opt import BayesianOptimization, UtilityFunction
 from bayes_opt.logger import JSONLogger
 from bayes_opt.event import Events
 from bayes_opt.util import load_logs
 import os 
 from xgboost_learning.black_box import BlackBoxFunctor
 
-def get_clean_data(nparts,ynum):
-    df = read_parquet().select_dtypes('number').partitions[:nparts]
+def get_clean_data(beg,end,ynum):
+    df = read_parquet().select_dtypes('number').partitions[beg:end]
     cols = df.columns
     xcols = [c for c in cols if 'X' in c]
     ycols = [c for c in cols if f'Y{ynum}' in c]
-    maxtime = df['time'].max().compute()
-    mintime = df['time'].min().compute()
-    ntime = 4
-    df = df.assign(reltime = lambda x: np.floor((x['time'] - mintime)/(maxtime - mintime)*ntime))
+    df = df[df['Q1'] > 0.9999]
+    df = df[df['Q2'] > 0.9999]
+    t = df['time']
+    maxt = t.max()
+    mint = t.min()
+    relt = (t-mint)/(maxt-mint)
+    relt = np.floor(relt*4)
+    df['reltime'] = relt
     df = df.drop(columns = ['time'])
-    def clean(row:pandas.Series):
-        row.loc[np.abs(row) > 999] = np.nan
-        if row[f'Q{ynum}'] < 0.99999 or np.any(np.isnan(row[ycols])) or np.mean(np.isnan(row)) > 0.3:
-            row.iloc[:] = 0.
-        row = row.drop(columns=[f'Q{ynum}'])        
-        return row
-    df = df.apply(clean,axis = 1,by_row=False)
+    df[np.abs(df) >= 999] = 0
     return df,xcols,ycols
 
 class BayesSearchParams:
@@ -84,7 +82,7 @@ def main():
     ynum = (index - 1) % 2 + 1
     random_state = index//2
     print(f'nfiles = {nfiles} ncv = {ncv} niter = {niter} ynum = {ynum}, random_state = {random_state}',flush = True)
-    df,xcols,_ = get_clean_data(nfiles,ynum)
+    df,xcols,_ = get_clean_data(0,nfiles,ynum)
     
     bsp = BayesSearchParams(**param_transform_pairs)
 
