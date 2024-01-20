@@ -100,7 +100,7 @@ class HyperParamFunctor:
         return_dicts = []
         for it,it_scrs in enumerate(zip(*outputs)):
             pparams = params.copy()
-            pparams['num_boost_round'] = it          
+            pparams['num_boost_round'] = it+1      
             val = np.mean(it_scrs)
             if self.negate:
                 val = -val
