@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import dask.distributed
 import os
@@ -6,7 +7,7 @@ import dask.dataframe as dataframe
 warnings.filterwarnings("ignore")
 
 
-ROOT_FOLDER = 'inner_prods'
+ROOT_FOLDER = 'innerprods'
 N_CV = 8
 N_TIME = 4
 PROD_TYPES = 'xx xy yy'.split()
@@ -30,8 +31,8 @@ def pick_time_index(df,t):
     df = df.drop(columns = ['Q1','Q2','reltime'])
     return df
     
-def single_time_index(df,t):
-    df = pick_time_index(df,t)
+def single_time_index(df,cvi,ti):
+    df = pick_time_index(df,ti)
     ycols = ['Y1','Y2']
     xinds = [i for i,c in enumerate(df.columns) if c not in ycols]
     yinds = [df.columns.tolist().index(c) for c in ycols]
@@ -46,9 +47,13 @@ def single_time_index(df,t):
     split_indices = np.array_split(inds,N_CV,axis = 0)
     lincomps = {}
     for i,sp in enumerate(split_indices):
+        if i != cvi:
+            continue
         dfsp = df_arr[sp,:]
         x = dfsp[:,xinds]
         y = dfsp[:,yinds]
+        x = np.where(np.isnan(x),0,x)
+        y = np.where(np.isnan(y),0,y)
         xx = x.T@x
         xy = x.T@y
         yy = y.T@y
@@ -59,7 +64,7 @@ def single_time_index(df,t):
     
     for i,lc in lincomps.items():
         for c,v in lc.items():
-            address = prod_location(t,i,c)
+            address = prod_location(ti,i,c)
             print(f'saving {address}')
             np.save(address.replace('.npy',''),v.compute())
 
@@ -79,12 +84,15 @@ def get_clean_data():
     df = df[np.sum(np.isnan(df),axis = 1)==0]
     return df
 def main():
+    t_cv = int(sys.argv[1]) - 1
+    cvi = t_cv % N_CV
+    ti = (t_cv//N_CV)%N_TIME
     cluster = dask.distributed.LocalCluster()
     _ = dask.distributed.Client(cluster)
     
     df = get_clean_data()
     for ti in range(N_TIME):
-        single_time_index(df.copy(),ti)
+        single_time_index(df.copy(),cvi,ti)
         
 if __name__ == '__main__':
     main()
