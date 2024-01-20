@@ -124,9 +124,9 @@ def main():
         "max_depth" : (2,10),
         "min_child_weight" : (1,1e4),
         "subsample" : (0.1,1.),
-        # "colsample_bytree" : (0.1,1.),
+        "colsample_bytree" : (0.1,1.),
     }
-    hpf = HyperParamFunctor(dflt_params = params,negate=True,niter = 4,time_index=ti,y_index=yi,client =client,n_cv = 4)
+    hpf = HyperParamFunctor(dflt_params = params,negate=True,niter = 2,time_index=ti,y_index=yi,client =client,n_cv = 4)
     hplogs = get_hyper_param_logs(ti,yi)
     opt,uti = get_bayes_optimizer(hplogs,tune_params,0)
     while True:
