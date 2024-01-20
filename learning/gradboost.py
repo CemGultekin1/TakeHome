@@ -44,7 +44,8 @@ class HyperParamFunctor:
         self.dflt_params = dflt_params
         self.niter = niter
         self.negate = negate
-        df =  get_clean_data()#.partitions[:128]
+        print(f'df =  get_clean_data()')
+        df =  get_clean_data()#.partitions[:4]
         df = pick_time_index(df,time_index)
         ycols = ['Y1','Y2']
         inds = get_nnz_feats(time_index,y_index)
@@ -53,7 +54,7 @@ class HyperParamFunctor:
         ycol = [ycols[y_index]]
         xinds = [df.columns.tolist().index(c) for c in xcols]
         yinds = [df.columns.tolist().index(c) for c in ycol]
-
+        print(f'converting to dask_array')
         df_arr = df.to_dask_array(lengths = True)
 
         x_arr = df_arr[:,xinds]
@@ -67,7 +68,8 @@ class HyperParamFunctor:
             cv_indices.append((tr,ts))
             
         ddmats = []
-        for tr,ts in cv_indices:
+        for i,(tr,ts) in enumerate(cv_indices):
+            print(f'forming DaskDMatrix for cv #{i}')
             trset = xgb.dask.DaskDMatrix(client, x_arr[tr,:],y_arr[tr])
             tsset = xgb.dask.DaskDMatrix(client, x_arr[ts,:],y_arr[ts])
             ddmats.append((trset,tsset))
@@ -93,7 +95,7 @@ class HyperParamFunctor:
             pparam['random_state'] = random_state
             for tr,ts in self.ddmats:
                 output = xgb.dask.train(self.client,pparam,\
-                    tr,evals = ((tr,'train'),(ts,'test')),num_boost_round=num_boost_round)
+                    tr,evals = ((tr,'train'),(ts,'test')),verbose_eval=False, num_boost_round=num_boost_round)
                 outputs.append(output['history']['test']['rmse'])
         return_dicts = []
         for it,it_scrs in enumerate(zip(*outputs)):
