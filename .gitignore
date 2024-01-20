@@ -15,6 +15,6 @@ runs
 *.gz
 *.ext3
 logs
-innerprods
+inner_prods
 genetic_solutions
 *.cache
