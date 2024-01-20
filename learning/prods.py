@@ -6,7 +6,7 @@ import dask.dataframe as dataframe
 warnings.filterwarnings("ignore")
 
 
-ROOT_FOLDER = 'innerprods'
+ROOT_FOLDER = 'inner_prods'
 N_CV = 8
 N_TIME = 4
 PROD_TYPES = 'xx xy yy'.split()
@@ -38,10 +38,12 @@ def single_time_index(df,t):
     
     df_arr = df.to_dask_array(lengths = True)
     
+    inds = np.arange(df_arr.shape[0])
+    rng = np.random.default_rng(0)
+    rng.shuffle(inds)
     
     
-    
-    split_indices = np.array_split(np.arange(df_arr.shape[0]),N_CV,axis = 0)
+    split_indices = np.array_split(inds,N_CV,axis = 0)
     lincomps = {}
     for i,sp in enumerate(split_indices):
         dfsp = df_arr[sp,:]
