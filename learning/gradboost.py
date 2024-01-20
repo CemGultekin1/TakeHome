@@ -44,7 +44,7 @@ class HyperParamFunctor:
         self.dflt_params = dflt_params
         self.niter = niter
         self.negate = negate
-        print(f'df =  get_clean_data()')
+        print(f'df =  get_clean_data()',flush = True)
         df =  get_clean_data()#.partitions[:4]
         df = pick_time_index(df,time_index)
         ycols = ['Y1','Y2']
@@ -54,7 +54,7 @@ class HyperParamFunctor:
         ycol = [ycols[y_index]]
         xinds = [df.columns.tolist().index(c) for c in xcols]
         yinds = [df.columns.tolist().index(c) for c in ycol]
-        print(f'converting to dask_array')
+        print(f'converting to dask_array',flush =True)
         df_arr = df.to_dask_array(lengths = True)
 
         x_arr = df_arr[:,xinds]
@@ -69,7 +69,7 @@ class HyperParamFunctor:
             
         ddmats = []
         for i,(tr,ts) in enumerate(cv_indices):
-            print(f'forming DaskDMatrix for cv #{i}')
+            print(f'forming DaskDMatrix for cv #{i}',flush=True)
             trset = xgb.dask.DaskDMatrix(client, x_arr[tr,:],y_arr[tr])
             tsset = xgb.dask.DaskDMatrix(client, x_arr[ts,:],y_arr[ts])
             ddmats.append((trset,tsset))
