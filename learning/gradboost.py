@@ -108,7 +108,7 @@ class HyperParamFunctor:
         return return_dicts
 
 def main():
-    tiyi = int(sys.argv[1])
+    tiyi = int(sys.argv[1]) - 1
     ti = tiyi%N_TIME
     yi = tiyi//N_TIME
     yi = yi%2
