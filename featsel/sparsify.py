@@ -1,8 +1,8 @@
 import itertools
-from learning.genetic import FitnessFunctor,gen_sol_location
+from featsel.genetic import FitnessFunctor,gen_sol_location
 import numpy as np
 
-from learning.prods import N_TIME
+from featsel.normaleqs import N_TIME
 def greedy_sparsify(ti,yi):
     ftn = FitnessFunctor(ti,yi,verbose=False)
     loc= gen_sol_location(ti,yi)

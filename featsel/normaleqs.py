@@ -7,7 +7,7 @@ import dask.dataframe as dataframe
 warnings.filterwarnings("ignore")
 
 
-ROOT_FOLDER = 'inner_prods'
+ROOT_FOLDER = 'inner_normal_eqs'
 N_CV = 8
 N_TIME = 4
 PROD_TYPES = 'xx xy yy'.split()
@@ -17,12 +17,12 @@ def read_parquet():
     parquet_files = [os.path.join(parquet_directory, f) for f in os.listdir(parquet_directory) if f.endswith('.parquet')]
     return dataframe.read_parquet(parquet_files)
 
-def prod_location(time_index,cvi,prodt):
+def normal_eq_location(time_index,cvi,normal_eqt):
     folder= os.path.join(ROOT_FOLDER,f't{time_index}p{N_TIME}')
     if not os.path.exists(folder):
         os.makedirs(folder)
-    assert prodt in PROD_TYPES
-    filename = f'cv{cvi}_{prodt}.npy'
+    assert normal_eqt in PROD_TYPES
+    filename = f'cv{cvi}_{normal_eqt}.npy'
     return os.path.abspath(os.path.join(folder,filename))
 def pick_time_index(df,t):
     reltime = df['reltime']
@@ -61,7 +61,7 @@ def single_time_index(df,cvi,ti):
         
     for i,lc in lincomps.items():
         for c,v in lc.items():
-            address = prod_location(ti,i,c)
+            address = normal_eq_location(ti,i,c)
             print(f'saving {address}',flush = True)
             np.save(address.replace('.npy',''),v.compute())
 
