@@ -5,5 +5,5 @@ PARQUET_DIRECTORY = 'qr_takehome'
 
 NORMAL_EQS_FOLDER = 'normal_eqs'
 N_CV = 8
-N_TIME = 4
+N_DAY_TIME = 4
 PROD_TYPES = 'xx xy yy'.split()
