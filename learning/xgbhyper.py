@@ -14,18 +14,44 @@ from bayes_opt.util import load_logs
 
 HYPERPARAMS_FOLDER = 'hyper_param_logs'
 XGB_PARAMS = {
-    "eta" : (1e-5,1e-1),
-    "gamma" : (0,1000),
-    "num_boost_round" : (1,200),
+    "eta" : (1e-4,5e-1),
+    "gamma" : (0.1,1000),
+    "num_boost_round" : (1,250),
     "max_depth" : (2,12),
     "min_child_weight" : (1,1e4),
-    "subsample" : (0.1,1.),
-    "colsample_bytree" : (0.1,1.),
+    "subsample" : (0.5,1.),
+    "colsample_bytree" : (0.5,1.),
+    "lambda" : (1e-5,1e3),
+    "alpha" : (1e-5,1e3),
 }
+LOG_SCALED_PARAMS = "eta gamma min_child_weight lambda alpha".split()
+
+class LogTransform:
+    @staticmethod
+    def transform(_forward = False,**param):
+        transform =  lambda  x: np.log10(x) if _forward else np.power(10.,x)
+        pparam = param.copy()
+        for key in pparam:
+            if key in LOG_SCALED_PARAMS:
+                if isinstance(pparam[key] ,tuple):
+                    pparam[key] = tuple(transform(x) for x in pparam[key])
+                else:
+                    pparam[key] = transform(pparam[key])
+        return pparam
+    @staticmethod
+    def forward(**param):
+        return LogTransform.transform(_forward = True,**param)
+    @staticmethod
+    def backward(**param):
+        return LogTransform.transform(_forward = False,**param)
+
+        
 
 def get_nnz_feats(ti,yi):
     loc = gen_sol_location(ti,yi)
     w = np.load(loc)
+    if len(w) == 376:
+        w = w[:-1]
     return np.where(np.abs(w)!=0)[0]
 
 def get_hyper_param_logs(ti,yi):
@@ -50,12 +76,10 @@ def get_bayes_optimizer(hplogs_file,pbounds = None,random_state = 0):
     return optimizer,utility
 
 class HyperParamFunctor:
-    def __init__(self,dflt_params = {},niter = (0,1),test_run:bool = False,time_index = 0, y_index = 1,negate:bool = False,client = None,n_cv = 4):
+    def __init__(self,dflt_params = {},niter = (0,1),test_run:bool = False,time_index = 0, y_index = 1,client = None,n_cv = 4):
         self.client = client
         self.dflt_params = dflt_params
         self.niter = niter
-        self.negate = negate
-        print(f'df =  get_clean_data()',flush = True)
         if test_run:
             df =  get_clean_data().partitions[:4]
         else:
@@ -85,16 +109,13 @@ class HyperParamFunctor:
             
         ddmats = []
 
-        self.sc2 = []
+        self.sc2 = np.mean(y_arr**2).compute()
         for i,(tr,ts) in enumerate(cv_indices):
             print(f'forming DaskDMatrix for cv #{i}',flush=True)
             trset = xgb.dask.DaskDMatrix(client, x_arr[tr,:],y_arr[tr])
             tsset = xgb.dask.DaskDMatrix(client, x_arr[ts,:],y_arr[ts])
-            ddmats.append((trset,tsset))                                
-            
-            self.sc2.append(np.mean(y_arr[ts]**2).compute())            
+            ddmats.append((trset,tsset))                                            
         self.ddmats = ddmats
-        self.sc2 = np.array(self.sc2).reshape([-1,1])
     @property
     def integer_type_params(self,):
         return [
@@ -119,19 +140,22 @@ class HyperParamFunctor:
                 pparam['random_state'] = random_state
                 output = xgb.dask.train(self.client,pparam,\
                     tr,evals = ((tr,'train'),(ts,'test')),verbose_eval=False, num_boost_round=num_boost_round)
-                outputs[:,j,k] = np.array(output['history']['test']['rmse'])
+                outputs[:,j,k] = np.array(output['history']['test']['rmse'])**2
         return_dicts = []
         return_vals = []
         for it in range(outputs.shape[0]):
-            rmse_scrs = outputs[it,...]
+            mse = outputs[it,...]
             pparams = params.copy()
-            pparams['num_boost_round'] = it+1    
-            mse = np.array(rmse_scrs)**2
-            val = np.sqrt(np.mean(mse))
-            return_vals.append(mse)            
-            if self.negate:
-                val = -val
-            return_dicts.append(dict(params = pparams,target = val))
+            pparams['num_boost_round'] = it+1
+            r2 = 1 - np.mean(mse)/self.sc2
+            return_vals.append(r2)            
+            
+            exkeys = list(pparams.keys())
+            for key in exkeys:
+                if key not in _params:
+                    pparams.pop(key)    
+                    
+            return_dicts.append(dict(params = pparams,target = r2))
         return return_vals,return_dicts
 
 
@@ -139,20 +163,23 @@ def main():
     tiyi = int(sys.argv[1]) - 1
     ti = tiyi%N_TIME
     yi = (tiyi//N_TIME)%2
-    
+    print(f'time_index = {ti}, y_index = {yi}',flush = True)
     cluster = dask.distributed.LocalCluster()
     client = dask.distributed.Client(cluster)
     params = {
         "objective": "reg:squarederror",
     }
     
-    hpf = HyperParamFunctor(dflt_params = params,negate=True,niter = (0,2),time_index=ti,y_index=yi,client =client,n_cv = 4)
+    hpf = HyperParamFunctor(dflt_params = params,niter = (0,2),time_index=ti,y_index=yi,client =client,n_cv = 4)
     hplogs = get_hyper_param_logs(ti,yi)
-    opt,uti = get_bayes_optimizer(hplogs,XGB_PARAMS,0)
+    transformed_bounds = LogTransform.forward(**XGB_PARAMS)
+    opt,uti = get_bayes_optimizer(hplogs,transformed_bounds,0)
     while True:
         params = opt.suggest(uti)
-        _,register_records = hpf(**params)
+        pparams = LogTransform.backward(**params)
+        _,register_records = hpf(**pparams)
         for param_target in register_records:
+            param_target['params'] = LogTransform.forward(**param_target['params'])
             opt.register(**param_target)
 
 

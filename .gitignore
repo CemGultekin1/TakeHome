@@ -19,3 +19,4 @@ inner_prods
 genetic_solutions
 *.cache
 inner_prods_time_sens
+hyper_param_logs
