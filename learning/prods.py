@@ -40,8 +40,6 @@ def single_time_index(df,cvi,ti):
     df_arr = df.to_dask_array(lengths = True)
     
     inds = np.arange(df_arr.shape[0])
-    rng = np.random.default_rng(0)
-    rng.shuffle(inds)
     
     
     split_indices = np.array_split(inds,N_CV,axis = 0)
@@ -60,12 +58,11 @@ def single_time_index(df,cvi,ti):
         lincomps[i] = dict(
             xx = xx,xy = xy,yy =yy
         )
-    
-    
+        
     for i,lc in lincomps.items():
         for c,v in lc.items():
             address = prod_location(ti,i,c)
-            print(f'saving {address}')
+            print(f'saving {address}',flush = True)
             np.save(address.replace('.npy',''),v.compute())
 
 def get_clean_data():

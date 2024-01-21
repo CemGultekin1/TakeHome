@@ -17,7 +17,7 @@ XGB_PARAMS = {
     "eta" : (1e-5,1e-1),
     "gamma" : (0,1000),
     "num_boost_round" : (1,200),
-    "max_depth" : (2,10),
+    "max_depth" : (2,12),
     "min_child_weight" : (1,1e4),
     "subsample" : (0.1,1.),
     "colsample_bytree" : (0.1,1.),
@@ -50,7 +50,7 @@ def get_bayes_optimizer(hplogs_file,pbounds = None,random_state = 0):
     return optimizer,utility
 
 class HyperParamFunctor:
-    def __init__(self,dflt_params = {},niter = (0,1),test_run:bool = False,report_r2:bool = False,time_index = 0, y_index = 1,negate:bool = False,client = None,n_cv = 4):
+    def __init__(self,dflt_params = {},niter = (0,1),test_run:bool = False,time_index = 0, y_index = 1,negate:bool = False,client = None,n_cv = 4):
         self.client = client
         self.dflt_params = dflt_params
         self.niter = niter
@@ -75,9 +75,7 @@ class HyperParamFunctor:
         y_arr = df_arr[:,yinds]
 
         inds = np.arange(df_arr.shape[0])
-        rng = np.random.default_rng(0)
-        rng.shuffle(inds)
-        
+                
         split_indices = np.array_split(inds,n_cv,axis = 0)
         cv_indices = []
         for i in range(n_cv):
@@ -86,19 +84,17 @@ class HyperParamFunctor:
             cv_indices.append((tr,ts))
             
         ddmats = []
-        self.sc2 = None
-        if report_r2:
-            self.sc2 = []
+
+        self.sc2 = []
         for i,(tr,ts) in enumerate(cv_indices):
             print(f'forming DaskDMatrix for cv #{i}',flush=True)
             trset = xgb.dask.DaskDMatrix(client, x_arr[tr,:],y_arr[tr])
             tsset = xgb.dask.DaskDMatrix(client, x_arr[ts,:],y_arr[ts])
             ddmats.append((trset,tsset))                                
-            if report_r2:
-                self.sc2.append(np.mean(y_arr[ts]**2).compute())            
+            
+            self.sc2.append(np.mean(y_arr[ts]**2).compute())            
         self.ddmats = ddmats
-        if report_r2:
-            self.sc2 = np.array(self.sc2).reshape([-1,1])
+        self.sc2 = np.array(self.sc2).reshape([-1,1])
     @property
     def integer_type_params(self,):
         return [
@@ -131,12 +127,6 @@ class HyperParamFunctor:
             pparams = params.copy()
             pparams['num_boost_round'] = it+1    
             mse = np.array(rmse_scrs)**2
-            
-            # if self.sc2 is not None:
-            #     r2 = 1 - mse/self.sc2
-            #     val = np.mean(r2)
-            #     return_vals.append(r2)
-            # else:
             val = np.sqrt(np.mean(mse))
             return_vals.append(mse)            
             if self.negate:
@@ -148,8 +138,8 @@ class HyperParamFunctor:
 def main():
     tiyi = int(sys.argv[1]) - 1
     ti = tiyi%N_TIME
-    yi = tiyi//N_TIME
-    yi = yi%2
+    yi = (tiyi//N_TIME)%2
+    
     cluster = dask.distributed.LocalCluster()
     client = dask.distributed.Client(cluster)
     params = {
