@@ -5,33 +5,58 @@ import os
 import warnings
 import dask.dataframe as dataframe
 warnings.filterwarnings("ignore")
+from featsel.constants import ROOT_FOLDER,N_CV,N_TIME,PROD_TYPES,PARQUET_DIRECTORY
 
 
-ROOT_FOLDER = 'inner_normal_eqs'
-N_CV = 8
-N_TIME = 4
-PROD_TYPES = 'xx xy yy'.split()
-
-def read_parquet():
-    parquet_directory = 'qr_takehome'
+def read_parquet(parquet_directory :str = PARQUET_DIRECTORY)->dask.dataframe:
+    """
+        Reads the whole parquet directory in the workspace.
+        Args:
+            "parquet_directory"     : default defined in constants.py
+    """
     parquet_files = [os.path.join(parquet_directory, f) for f in os.listdir(parquet_directory) if f.endswith('.parquet')]
     return dataframe.read_parquet(parquet_files)
 
-def normal_eq_location(time_index,cvi,normal_eqt):
+def normal_eq_location(time_index:int,cvi:int,normal_eqt:str):
+    """
+        Returns the abspath to the .npy file storing the normal equations
+        Args:
+            "time_index" : specifies the time partition of the day out of "N_TIME" groups
+            "cvi"        : cross validation group index
+            "normal_eqt" : type of the normal equation component 
+    """
+    assert normal_eqt in PROD_TYPES
+    
     folder= os.path.join(ROOT_FOLDER,f't{time_index}p{N_TIME}')
     if not os.path.exists(folder):
         os.makedirs(folder)
-    assert normal_eqt in PROD_TYPES
+    
     filename = f'cv{cvi}_{normal_eqt}.npy'
     return os.path.abspath(os.path.join(folder,filename))
-def pick_time_index(df,t):
+def pick_time_index(df:dask.dataframe,ti:int):
+    """
+        Removes the rows of "df" that doesn't belong to 
+        a specific day time index. 
+        Args:
+            "df"    : dataframe with reltime specifying relative time in the day
+            "t"     : specific index out of N_TIME 
+    """
     reltime = df['reltime']
-    df = df[reltime < t+0.5]
-    df = df[reltime > t-0.5]
+    df = df[reltime < ti+0.5]
+    df = df[reltime > ti-0.5]
     df = df.drop(columns = ['Q1','Q2','reltime'])
     return df
     
-def single_time_index(df,cvi,ti):
+def compute_normal_eqs(df:dask.dataframe,cvi:int,ti:int):
+    """
+    Divides "df" across days into N_CV many disjoint blocks. 
+    For the particular block with index "cvi" computes(lazy) the
+    normal equations for day time index "ti".
+    Args:
+        "df"    : data
+        "cvi"   : cross-validation index out of N_CV
+        "ti"    : day time index out of N_TIME
+    """
     df = pick_time_index(df,ti)
     ycols = ['Y1','Y2']
     xinds = [i for i,c in enumerate(df.columns) if c not in ycols]
@@ -43,7 +68,7 @@ def single_time_index(df,cvi,ti):
     
     
     split_indices = np.array_split(inds,N_CV,axis = 0)
-    lincomps = {}
+    normal_eqs = {}
     for i,sp in enumerate(split_indices):
         if i != cvi:
             continue
@@ -55,17 +80,16 @@ def single_time_index(df,cvi,ti):
         xx = x.T@x
         xy = x.T@y
         yy = y.T@y
-        lincomps[i] = dict(
+        normal_eqs[i] = dict(
             xx = xx,xy = xy,yy =yy
         )
-        
-    for i,lc in lincomps.items():
-        for c,v in lc.items():
-            address = normal_eq_location(ti,i,c)
-            print(f'saving {address}',flush = True)
-            np.save(address.replace('.npy',''),v.compute())
+    return normal_eqs
+    
 
-def get_clean_data():
+def clean_raw_data()->dask.dataframe:
+    """
+        Reads the whole dataset and cleans it (lazy)
+    """
     df = read_parquet().select_dtypes('number')
     t = df['time']
     maxt = t.max()
@@ -88,9 +112,14 @@ def main():
     cluster = dask.distributed.LocalCluster()
     _ = dask.distributed.Client(cluster)
     
-    df = get_clean_data()
+    df = clean_raw_data()
     for ti in range(N_TIME):
-        single_time_index(df.copy(),cvi,ti)
+        normal_eqs = compute_normal_eqs(df.copy(),cvi,ti)
+        for cvi,nrm_eq in normal_eqs.items():
+            for _type,_dask_arr in nrm_eq.items():
+                address = normal_eq_location(ti,cvi,_type)
+                print(f'saving {address}',flush = True)
+                np.save(address.replace('.npy',''),_dask_arr.compute())
         
 if __name__ == '__main__':
     main()

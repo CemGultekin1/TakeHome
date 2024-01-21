@@ -8,8 +8,8 @@ from geneticalgorithm import geneticalgorithm as ga
 from featsel.normaleqs import prod_location,N_TIME,PROD_TYPES,N_CV
 import dask.distributed
 import dask
+from featsel.constants import GENETIC_SOLUTIONS_FOLDER
 
-SOLUTIONS_FOLDER = 'genetic_solutions'
 def gen_sol_location(time_index:int,y_index:int,n_time :int = N_TIME)->str:
     """
     Returns the path to the genetic programming result. 
@@ -20,11 +20,11 @@ def gen_sol_location(time_index:int,y_index:int,n_time :int = N_TIME)->str:
             "n_time"        : It has to be divisor of "N_TIME" global constant
         Returns:
             "path"          : The absolute path to the .npy file where the weights are stored
-                    The file rests under the path specified in global variable "SOLUTIONS_FOLDER"
+                    The file rests under the path specified in global variable "GENETIC_SOLUTIONS_FOLDER"
     """
     assert N_TIME % n_time  == 0
     
-    folder = os.path.abspath(SOLUTIONS_FOLDER)
+    folder = os.path.abspath(GENETIC_SOLUTIONS_FOLDER)
     if not os.path.exists(folder):
         os.makedirs(folder)
     if n_time == N_TIME:
