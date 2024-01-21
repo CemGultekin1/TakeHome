@@ -87,6 +87,7 @@ def main():
     t_cv = int(sys.argv[1]) - 1
     cvi = t_cv % N_CV
     ti = (t_cv//N_CV)%N_TIME
+    print(f'cross-val #{cvi}, time-index #{ti}',flush = True)
     cluster = dask.distributed.LocalCluster()
     _ = dask.distributed.Client(cluster)
     
