@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=prods
+#SBATCH --job-name=normaleqs
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=5

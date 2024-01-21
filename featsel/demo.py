@@ -1,8 +1,8 @@
 import itertools
-from learning.genetic import gen_sol_location
+from featsel.genetic import gen_sol_location
 import numpy as np
 import pandas as pd
-from learning.prods import read_parquet
+from featsel.normaleqs import read_parquet
 import matplotlib.pyplot as plt
 class LinearModel:
     max_time = 57600000
