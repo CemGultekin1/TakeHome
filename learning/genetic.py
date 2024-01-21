@@ -33,7 +33,8 @@ class FitnessFunctor:
         self.collect_cv_comps()   
     def get_full_solution(self,w):
         scr = -self.__call__(w)
-        b = w>0.5
+        reg = np.power(10.,w[-1])
+        b = w[:-1]>0.5
         keys = 'xx xy yy'.split()
         nparts = len(self.cvcomps)
         xx,xy,yy = 0,0,0
@@ -45,7 +46,7 @@ class FitnessFunctor:
         xx = xx[b,:]
         xx = xx[:,b]
         xy = xy[b,:]
-        w = np.linalg.solve(xx,xy[:,self.yi])        
+        w = np.linalg.solve(xx + np.eye(xx.shape[0])*reg,xy[:,self.yi])        
         ww = np.zeros(len(b),dtype = np.float64)
         ww[b] =w
         if self.reduc_inds is not None:
@@ -53,8 +54,7 @@ class FitnessFunctor:
             ww = np.zeros(self.org_dim,dtype = np.float64)
             print(self.org_dim,len(self.reduc_inds),np.amax(self.reduc_inds),w.shape)
             ww[self.reduc_inds] = w
-        return scr,ww
-            
+        return scr,ww            
     def read_from_folder(self,ti,yi):
         lincomps = defaultdict(lambda : {})
         for cvi,pt in itertools.product(range(N_CV),PROD_TYPES):
@@ -95,10 +95,11 @@ class FitnessFunctor:
     @property
     def ndim(self,):
         return self.cvcomps[0]['xx'].shape[0]
-    def __call__(self,b):        
-        yysum = 0
-        errsum = 0
-        b = b > 0.5
+    def get_err_sc2(self,b):
+        yysum = []
+        errsum = []
+        reg = np.power(10.,b[-1])
+        b = b[:-1] > 0.5
         keys = 'xx xy yy'.split()
         nparts = len(self.cvcomps)
         for i in range(nparts):
@@ -106,12 +107,13 @@ class FitnessFunctor:
             xx = xx[b,:]
             xx = xx[:,b]
             xy = xy[b,:]
-            w = np.linalg.solve(xx,xy)
+            sc= np.amax(xx)
+            w = np.linalg.solve(xx/sc + reg*np.eye(xx.shape[0]),xy/sc)
             xx,xy,yy = [self.lincomps[i][key] for key in keys]
             xx = xx[b,:]
             xx = xx[:,b]
             xy = xy[b,:]
-            err = w.T@xx@w - 2*w.T@xy + yy + np.linalg.norm(w)*1e-9
+            err = w.T@xx@w - 2*w.T@xy + yy #+ np.linalg.norm(w)*1e-9
             err = np.diag(err)
             yy = np.diag(yy)
             try:
@@ -121,16 +123,22 @@ class FitnessFunctor:
                 raise Exception(
                     f'np.linalg.norm(w) ={np.linalg.norm(w)},\t err = {err},\t yy = {yy}'
                 )
-            errsum += err
-            yysum += yy
-        r2 =  1 - errsum/yysum
-        k = self.yi
-        if r2[k] > self.best['r2']:
-            self.best['r2'] = r2[k]
+                # err = np.inf*np.ones_like(err)
+            errsum.append(err[self.yi])
+            yysum.append(yy[self.yi])
+        return np.array(errsum),np.array(yysum)
+    def __call__(self,b):        
+        err,sc2 = self.get_err_sc2(b.copy())
+        r2 =  1 - sum(err)/sum(sc2)
+        if r2 > self.best['r2']:
+            self.best['r2'] = r2
             self.best['val'] = b
             if self.verbose:
-                print(f't{self.ti}y{self.yi} = {"{:.2e}".format(r2[k])}')
-        return -r2[k]
+                formatter = "{:.3e}"
+                regstr = formatter.format(b[-1])
+                nnz = int(np.sum(b[:-1]))
+                print(f't{self.ti}y{self.yi} = {formatter.format(r2)}, nnz = {nnz}, reg = {regstr}')
+        return -r2
 
 @dask.delayed
 def run_gen_alg(ti,yi):
@@ -138,13 +146,20 @@ def run_gen_alg(ti,yi):
     fitness_fn.reduc(tol = 1e-5)
     algparams = {'max_num_iteration': None,\
                 'population_size':1000,\
-                'mutation_probability':1./300,\
+                'mutation_probability':1/300,\
                 'elit_ratio': 0.01,\
                 'crossover_probability': 0.5,\
                 'parents_portion': 0.3,\
                 'crossover_type':'one_point',\
                 'max_iteration_without_improv':200,}
-    model = ga(fitness_fn,fitness_fn.ndim,variable_type='bool',progress_bar = False,convergence_curve = False,algorithm_parameters=algparams)
+    var_types = np.array([['int']]*fitness_fn.ndim + [['real']])
+    var_bound=np.array([[0,1]]*fitness_fn.ndim + [[-12,-1]])
+    model = ga(fitness_fn,fitness_fn.ndim+1,\
+                variable_type_mixed = var_types,\
+                progress_bar = False,\
+                convergence_curve = False,\
+                variable_boundaries = var_bound,\
+                algorithm_parameters=algparams)
     model.run()
     solution=model.output_dict
     scr,weights = fitness_fn.get_full_solution(solution['variable'])

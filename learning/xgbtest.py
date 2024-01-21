@@ -9,17 +9,20 @@ def main():
     cluster = dask.distributed.LocalCluster()
     client = dask.distributed.Client(cluster)
     
-    params = {
+    max_params = {
         "objective": "reg:squarederror",
+        "eta" : 1e-2,
+        "gamma" : 500,
+        "max_depth" : 6,
+        "min_child_weight" : 100,
+        "subsample" : 0.5,
+        "colsample_bytree" : 0.5,
     }
-    max_params = opt.max['params']
-    max_params.update(params)
-    print(f'(time_index,y_index) = {time_index,y_index},\n\t best params = {max_params}')
     hpf = HyperParamFunctor(dflt_params = max_params,\
                             client = client,\
                             time_index=time_index,\
                             y_index=y_index,\
-                            n_cv=2,\
+                            n_cv=8,\
                             niter=(3,32),\
                             test_run=False)
     outs,_ = hpf()

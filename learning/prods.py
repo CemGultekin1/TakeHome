@@ -7,7 +7,7 @@ import dask.dataframe as dataframe
 warnings.filterwarnings("ignore")
 
 
-ROOT_FOLDER = 'innerprods'
+ROOT_FOLDER = 'inner_prods'
 N_CV = 8
 N_TIME = 4
 PROD_TYPES = 'xx xy yy'.split()
