@@ -5,7 +5,7 @@ import os
 import warnings
 import dask.dataframe as dataframe
 warnings.filterwarnings("ignore")
-from featsel.constants import ROOT_FOLDER,N_CV,N_TIME,PROD_TYPES,PARQUET_DIRECTORY
+from featsel.constants import NORMAL_EQS_FOLDER,N_CV,N_TIME,PROD_TYPES,PARQUET_DIRECTORY
 """
     Before selecting features using cross-validation (CV), it separates the data
     into N_CV many equal sized blocks in time and gathers normal equations from each block. 
@@ -30,7 +30,7 @@ def normal_eq_location(time_index:int,cvi:int,normal_eqt:str):
     """
     assert normal_eqt in PROD_TYPES
     
-    folder= os.path.join(ROOT_FOLDER,f't{time_index}p{N_TIME}')
+    folder= os.path.join(NORMAL_EQS_FOLDER,f't{time_index}p{N_TIME}')
     if not os.path.exists(folder):
         os.makedirs(folder)
     
