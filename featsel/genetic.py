@@ -5,7 +5,7 @@ import numpy as np
 import os
 from collections import defaultdict
 from geneticalgorithm import geneticalgorithm as ga
-from featsel.normaleqs import prod_location,N_TIME,PROD_TYPES,N_CV
+from featsel.normaleqs import normal_eq_location,N_TIME,PROD_TYPES,N_CV
 import dask.distributed
 import dask
 from featsel.constants import GENETIC_SOLUTIONS_FOLDER
@@ -117,7 +117,7 @@ class CostFunctor:
             ntotal = N_TIME//self.n_time
             tis = np.arange(self.time_index*ntotal,(self.time_index+1)*ntotal)
             for ti in tis:
-                f = prod_location(ti,cvi,pt)
+                f = normal_eq_location(ti,cvi,pt)
                 val = np.load(f)
                 normaleqs[cvi][pt] += val
         self.normaleqs = normaleqs

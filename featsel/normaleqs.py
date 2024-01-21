@@ -6,7 +6,10 @@ import warnings
 import dask.dataframe as dataframe
 warnings.filterwarnings("ignore")
 from featsel.constants import ROOT_FOLDER,N_CV,N_TIME,PROD_TYPES,PARQUET_DIRECTORY
-
+"""
+    Before selecting features using cross-validation (CV), it separates the data
+    into N_CV many equal sized blocks in time and gathers normal equations from each block. 
+"""
 
 def read_parquet(parquet_directory :str = PARQUET_DIRECTORY)->dask.dataframe:
     """
@@ -105,21 +108,25 @@ def clean_raw_data()->dask.dataframe:
     df = df[np.sum(np.isnan(df),axis = 1)==0]
     return df
 def main():
-    t_cv = int(sys.argv[1]) - 1
-    cvi = t_cv % N_CV
-    ti = (t_cv//N_CV)%N_TIME
+    """
+        Computes normal equations across N_CV many time blocks across the whole data.
+        Each normal equation is specific to a day time index out of N_TIME parts. 
+    """
+    t_cv = int(sys.argv[1]) - 1 # distributed task index
+    cvi = t_cv % N_CV # cross validation
+    ti = (t_cv//N_CV)%N_TIME # particular part of the day
     print(f'cross-val #{cvi}, time-index #{ti}',flush = True)
+    
     cluster = dask.distributed.LocalCluster()
     _ = dask.distributed.Client(cluster)
     
     df = clean_raw_data()
-    for ti in range(N_TIME):
-        normal_eqs = compute_normal_eqs(df.copy(),cvi,ti)
-        for cvi,nrm_eq in normal_eqs.items():
-            for _type,_dask_arr in nrm_eq.items():
-                address = normal_eq_location(ti,cvi,_type)
-                print(f'saving {address}',flush = True)
-                np.save(address.replace('.npy',''),_dask_arr.compute())
+    normal_eqs = compute_normal_eqs(df.copy(),cvi,ti)
+    for cvi,nrm_eq in normal_eqs.items():
+        for _type,_dask_arr in nrm_eq.items():
+            address = normal_eq_location(ti,cvi,_type)
+            print(f'saving {address}',flush = True)
+            np.save(address.replace('.npy',''),_dask_arr.compute())
         
 if __name__ == '__main__':
     main()
