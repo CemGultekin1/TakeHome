@@ -30,7 +30,7 @@ class LinearModel:
     def summarize(self,):
         summ = ""
         for key,prm in self.models.items():
-            summ += f"T({key[0]}/4),Y{key[1]+1}:\n\t"
+            summ += f"T({key[0]}/{self.n_time}),Y{key[1]+1}:\n\t"
             sstr = LinearModel._summarize(prm)
             summ += ",\n\t".join(sstr) + "\n"
         print(summ)
@@ -54,8 +54,9 @@ class LinearModel:
         
 def main():
     lm = LinearModel(2,2)
-    # lm.summarize()
     df = read_parquet()
+    lm.summarize()
+    return
     dfpart = df.partitions[100]
     # dfpart = dfpart[dfpart['time'] < dfpart['time'].max()/2]
     ypred = dfpart.apply(lm,axis = 1).compute()
