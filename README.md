@@ -1,5 +1,5 @@
 ## Brief Answers to Questions
-1. For feature selection, first QR-algorithm is used to get rid of linearly degenerate features. Then we use genetic algorithm to pick the best features. The genetic algorithm is then followed by a greedy algorithm to find a smaller set of features. (See ***Feature Selection***)
+1. For feature selection, first QR-algorithm is used to get rid of linearly degenerate features. Then we use genetic algorithm to pick the best features. The genetic algorithm is followed by a greedy algorithm to find a smaller set of features. (See ***Feature Selection***)
 
 2. We use linear models with L2 regularization. First and second halves of a day are modeled with different linear models.
 
@@ -7,10 +7,7 @@
 
 4. We employed 8-fold cross validation. The data is split into 8 approximately equal sized parts across days. Each part contains consecutive days. We repeatedly train on 7 of these and test on 1. (See ***Linear Model***)
 
-5. We provide $R^2$ metrics in ***Results** section.
-
-## Brief Overview
-The approach is to use linear models for feature selection and further experiment with a more complex algorithm (xgboost). For feature selection, we used genetic algorithm. Our results show that around 30 many features provide the best generalization in linear model. Our experiments with xgboost models didn't generalize better than linear models, so we are not including in the presentation.
+5. We provide $R^2$ metrics in **Results** section. We provide a more detailed presentation below. 
 
 
 ## Linear Model
@@ -70,4 +67,7 @@ Y2|4.705e-03|3.546e-03|
 
 
 
+## Reproduction
 
+### Training
+The repo assumes '''qr_takehome''' folder contains the parquet files.
