@@ -45,9 +45,15 @@ The features are nearly degenerate. In order to get rid of those which are linea
 
 We use the library [geneticalgorithm](https://github.com/rmsolgi/geneticalgorithm) in order to minimize the loss function. The algorithm starts with randomly a generated population of 1000 individuals. Each individual is a vector in the form of $(m,\log_{10}(\lambda))$. $m$ as an integer takes values from $\{0,1\}$ and $\log_{10}(\lambda) \in [-12,-1]$ is a real number. In each round random pairs are crossed to create 2 offsprings by splitting the sequence of numbers $(m,\log_{10}(\lambda))$ on a random point and crossing the values. At each round individual are selected according to their fitness and with a chance of $1/300$, an entry in an individual gets mutated. We stop the algorithm after 200 generations pass with no improvements on the best score. 
 
-The genetic algorithm results are not necessarily optimal. Sometimes, we can improve it through a greedy algorithm towards less number of features and less regularization. In this method, at each step we either change a 1 to 0 in $m$ or reduce $\log_{10}(\lambda)$ by $0.5$. Among all possible decisions, we take the one that creates the largest drop in the loss. The iterations continue until no more any loss reduction is possible. In our test runs greedy algorithm improving the genetic results. But with the chosen small mutation rate and population size, we do not observe any step taken by the greedy algrithm.
+The genetic algorithm results are not necessarily optimal. Sometimes, we can improve it through a greedy algorithm towards less number of features and less regularization. In this method, at each step we either change a 1 to 0 in $m$ or reduce $\log_{10}(\lambda)$ by $0.5$. Among all possible decisions, we take the one that creates the largest drop in the loss. The iterations continue until no more any loss reduction is possible. In our test runs greedy algorithm improving the genetic results. But with the chosen small mutation rate and population size, we do not observe any step taken by the greedy algorithm.
+
+## Results
 
 
 
+0.357
 
+Attempt | #1 | #2 | #3 | #4 | #5 | #6 | #7 | #8 | #9 | #10 | #11
+--- | --- | --- | --- |--- |--- |--- |--- |--- |--- |--- |---
+Seconds | 301 | 283 | 290 | 286 | 289 | 285 | 287 | 287 | 272 | 276 | 269
 
