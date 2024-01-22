@@ -4,8 +4,6 @@ The approach is to use linear models for feature selection and further experimen
 ## Linear Model
 We are minimizing MSE on a subset of data defined as $(X,y)$ with each time instance occupying a row in $X$ and $y$. 
 
-
-
 $$\text{min}_{w} ||Xw - y||_2^2 + \lambda ||w||_2^2$$
 
 Our feature selection algorithm learns feature selection mask $m$ and regularization parameter $\lambda$ jointly. For each $f = (m,\lambda)$ pair, we solve the normal equations on a train set. Below use subscript to indicate the corresponding submatrix or vector. In order to keep $\lambda$ scale invariant we multiply it with the maximum entry of $X^TX$ on the training set.
@@ -20,18 +18,22 @@ Then we acquire an MSE (mean squared error) value on the test set.
 
 $$\text{MSE}(f) = w_{f}^TX_m^TX_mw_{f} -  2w_{f}^TX_m^Ty + y^Ty,\quad (X,y) = D_{\text{test}}$$
 
-The cross-validation is done by splitting the data into 8 approximately equal parts in time, i.e. a 1-7 split in test-train. The data is not shuffled before the split in order to avoid mixing any non-stationary nature of the data. The cost function is defined by averaging MSE on the test sets across all 8 splits. Below we index each partition with $i$.
+The cross-validation is done by splitting the data into 8 approximately equal parts in time, i.e. a 1-7 split in test-train. The data is not shuffled before the split in order to avoid mixing any non-stationary nature of the data. The loss function is defined by averaging MSE on the test sets across all 8 splits. Below we index each partition with $i$.
 
 $$
-\text{cost-fun}(f) =\big(\sum_{i = 0}^{n - 1} \text{MSE}(m,\lambda;i)\big)/\big(\sum_{i = 0}^{n - 1} \text{MSE}(0,\lambda;i)\big) + 
+\text{loss-fun}(f) =\big(\sum_{i = 0}^{n - 1} \text{MSE}(m,\lambda;i)\big)/\big(\sum_{i = 0}^{n - 1} \text{MSE}(0,\lambda;i)\big) + 
 \epsilon (||m||_1 + \lambda)
 $$
 
-In the cost function the MSE values are normalized with $\sum_i\text{MSE}(0,\lambda;i)$ which is a constant equal to $y^Ty$, the total energy across the whole target values. The second part of the cost function is to promote reduction in number of parameters and L2-regularization. The value of $\epsilon$ is chosen as $10^{-4}$ so that this part only runs in effect when MSE is no longer decreasing significantly.
+In the loss function the MSE values are normalized with $\sum_i\text{MSE}(0,\lambda;i)$ which is a constant equal to $y^Ty$, the total energy across the whole target values. The second part of the loss function is to promote reduction in number of parameters and L2-regularization. The value of $\epsilon$ is chosen as $10^{-4}$ so that this part only runs in effect when MSE is no longer decreasing significantly.
 
-## Genetic Algorithm
+## Feature Selection
 
-The above defined cost function is minimized with [geneticalgorithm](https://github.com/rmsolgi/geneticalgorithm). The algorithm starts a random pool of 1000 values of $(m,\log_{10}(\lambda))$ with $m$ taking values from $\{0,1\}$ and $\log_{10}(\lambda) \in [-12,-1]$.
+The features are nearly degenerate. In order to get rid of those which are linearly dependent on others, we run a QR-decomposition on $X^TX$ coming from the first training set. The zeros on R matrix diagonals emerge when prior columns of cancel out that column. We get rid of features that correspond to a diagonal value amplitude less than 1e-5 (relative to the largest diagonal value). This reduces the number of features from 375 to 233. We continue our feature selection process with the remaining oness. 
+
+The above defined loss function is minimized with [geneticalgorithm](https://github.com/rmsolgi/geneticalgorithm). The algorithm starts with randomly generation population of 1000 individuals, each one is a vector of form $(m,\log_{10}(\lambda))$. $m$ as an integer takes values from $\{0,1\}$ and $\log_{10}(\lambda) \in [-12,-1]$ is a real number. In each round random pairs are crossed to create 2 offsprings by splitting the sequence of numbers $(m,\log_{10}(\lambda))$ on a random point and crossing the values. At each round individual are selected according to their fitness and with a chance of $1/300$, an entry in an individual gets mutated. We stop the algorithm after 200 generations pass with no improvements on the best score. 
+
+The genetic algorithm results are not necessarily optimal. We improve the results through a greedy algorithm towards less number of features and less regularization. In this method, at each step we either change a 1 to 0 in $m$ or reduce $\log_{10}(\lambda)$ by $0.5$. Among all possible decisions, we take the one that creates the largest drop in the loss. The iterations continue until no more any loss reduction is possible. In our test runs greedy algorithm improving the genetic results. But with the chosen small mutation rate and population size
 
 
 
