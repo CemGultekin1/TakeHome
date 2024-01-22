@@ -12,7 +12,7 @@ Our feature selection algorithm learns feature selection mask $m$ and regulariza
 
 $$(X_m^TX_m+s_X\lambda I)w_{f} = X_m^Ty,\quad (X,y) = D_{\text{train}}$$
 
-$$s_X = (X^TX)_{i,j}$$
+$$s_X =\max_{i,j} (X^TX)_{i,j}$$
 
 $$\text{MSE}(f) = w_{f}^TX_m^TX_mw_{f} -  2w_{f}^TX_m^Ty + y^Ty,\quad (X,y) = D_{\text{test}}$$
 
