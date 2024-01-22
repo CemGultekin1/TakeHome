@@ -97,7 +97,7 @@ The repo contains the already trained weights. If it all went well, you can run 
 python calibration/demo.py
 ```
 
-![plot] demo-16.png
+![plot](demo-16.png)
 
 ### Testing
 We have 'LinearModel' class under 'calibration/test' which can be used as shown below to apply to a pandas dataframe.
