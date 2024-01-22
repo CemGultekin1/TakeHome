@@ -17,7 +17,7 @@ $$\text{MSE}(f) = w_{f}^TX_m^TX_mw_{f} -  2w_{f}^TX_m^Ty + y^Ty,\quad (X,y) = D_
 The cross-validation is done by splitting the data into 8 approximately equal parts in time, i.e. a 1-7 split in test-train. The data is not shuffled before the split in order to avoid mixing any non-stationary nature of the data. The cost function is defined by averaging MSE on the test sets across all 8 splits. 
 
 $$
-\text{cost-fun}(f) =\frac{\sum_{i = 0}^{n - 1} \text{MSE}(m,\lambda)}{\sum_{i = 0}^{n - 1} \text{MSE}(0,\lambda)} + 
+\text{cost-fun}(f) =\big(\sum_{i = 0}^{n - 1} \text{MSE}(m,\lambda)\big)/\big(\sum_{i = 0}^{n - 1} \text{MSE}(0,\lambda)\big) + 
 \epsilon (||m||_1 + \lambda)
 $$
 
