@@ -14,14 +14,14 @@ $$(X_m^TX_m+\lambda I)w_{f} = X_m^Ty,\quad (X,y) = D_{\text{train}}$$
 
 $$\text{MSE}(f) = w_{f}^TX_m^TX_mw_{f} -  2w_{f}^TX_m^Ty + y^Ty,\quad (X,y) = D_{\text{test}}$$
 
-The cross-validation is done by splitting the data into 8 approximately equal parts in time, i.e. a 1-7 split in test-train. The data is not shuffled before the split in order to avoid mixing any non-stationary nature of the data. The cost function is defined by averaging MSE on the test sets across all 8 splits. Below we write $CV$ as the collection of splits.
+The cross-validation is done by splitting the data into 8 approximately equal parts in time, i.e. a 1-7 split in test-train. The data is not shuffled before the split in order to avoid mixing any non-stationary nature of the data. The cost function is defined by averaging MSE on the test sets across all 8 splits. 
 
 $$
-\text{cost-fun}(f) = \frac{1}{|CV|}\sum_{(D_{\text{train}},D_{\text{test}}) \in CV} \frac{\text{MSE}(m,\lambda; D_{\text{train}},D_{\text{test}})}{\text{MSE}(0,\lambda)} + 
+\text{cost-fun}(f) = \frac{1}{n_{cv}} \frac{\sum_{i = 0}^{n_cv - 1} \text{MSE}_i(m,\lambda)}{\sum_{i = 0}^{n_cv - 1} \text{MSE}_i(0,\lambda)} + 
 \epsilon (||m||_1 + \lambda)
 $$
 
-In the cost-fun the MSE values are normalized with $\text{MSE}(0,\lambda)$ which is a constant equal to $y^Ty$, the total energy across the whole data.
+In the cost-fun the MSE values are normalized with $\sum_i\text{MSE}_i(0,\lambda)$ which is a constant equal to $y^Ty$, the total energy across the whole target values.
 
 
 
