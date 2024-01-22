@@ -5,10 +5,11 @@
 
 3. After getting rid of NaN valued rows, the data is not sampled again. (See ***Data Pre-Processing***)
 
-4. We employed 8-fold cross validation. The data is split into 8 approximately equal sized parts across days. Each part contains consecutive days. We repeatedly train on 7 of these and test on 1. (See ***Linear Model***)
+4. We employed 8-fold cross validation. The data is split into approximately equal sized parts across days. Each part contains consecutive days. We repeatedly train on 7 of these and test on 1. (See ***Linear Model***)
 
 5. We provide $R^2$ metrics in **Results** section. We provide a more detailed presentation below. 
 
+For reproducing the results see the very last section.
 
 ## Linear Model
 We are minimizing MSE on a subset of data defined as $(X,y)$ with each time instance occupying a row in $X$ and $y$. 
@@ -50,11 +51,11 @@ We get rid of rows with Q1,Q2 < 0.9999. We set any X and Y value with larger tha
 
 ## Feature Selection
 
-The features are nearly degenerate. In order to get rid of those which are linearly dependent on others, we run a QR-decomposition on $X^TX$ coming from the first training set. The zeros on R matrix diagonals emerge when prior columns of cancel out that column. We get rid of features that correspond to a diagonal value amplitude less than 1e-5 (relative to the largest diagonal value). This reduces the number of features from 375 to 233. We continue our feature selection process with the remaining oness. 
+The features are nearly degenerate. In order to get rid of those which are linearly dependent on others, we run a QR-decomposition on $X^TX$ coming from the first training set. The zeros on R matrix diagonals emerge when prior columns of cancel out that column. We get rid of features that correspond to a diagonal value amplitude less than 1e-5 (relative to the largest diagonal value). This reduces the number of features from 375 to 233 and 238 (morning/afternoon separately). We continue our feature selection process with the remaining oness. 
 
 We use the library [geneticalgorithm](https://github.com/rmsolgi/geneticalgorithm) in order to minimize the loss function. The algorithm starts with randomly a generated population of 1000 individuals. Each individual is a vector in the form of $(m,\log_{10}(\lambda))$. $m$ as an integer takes values from $\{0,1\}$ and $\log_{10}(\lambda) \in [-12,-1]$ is a real number. In each round random pairs are crossed to create 2 offsprings by splitting the sequence of numbers $(m,\log_{10}(\lambda))$ on a random point and crossing the values. At each round individual are selected according to their fitness and with a chance of $1/300$, an entry in an individual gets mutated. We stop the algorithm after 200 generations pass with no improvements on the best score. 
 
-The genetic algorithm results are not necessarily optimal. Sometimes, we can improve it through a greedy algorithm towards less number of features and less regularization. In this method, at each step we either change a 1 to 0 in $m$ or reduce $\log_{10}(\lambda)$ by $0.5$. Among all possible decisions, we take the one that creates the largest drop in the loss. The iterations continue until no more any loss reduction is possible. In our test runs greedy algorithm improving the genetic results. But with the chosen small mutation rate and population size, we do not observe any step taken by the greedy algorithm.
+The genetic algorithm results are not necessarily optimal. We can improve it with a simple greedy algorithm. In this method, at each step we either change a single 1 entry in $m$ to 0 or reduce $\log_{10}(\lambda)$ by $0.5$. Among all possible decisions, we take the one that creates the largest drop in the loss. The iterations continue until no more any loss reduction is possible.
 
 ## Results
 
