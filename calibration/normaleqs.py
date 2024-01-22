@@ -1,3 +1,4 @@
+import itertools
 import sys
 import numpy as np
 import dask.distributed
@@ -5,19 +6,19 @@ import os
 import warnings
 import dask.dataframe as dataframe
 warnings.filterwarnings("ignore")
-from featsel.constants import NORMAL_EQS_FOLDER,N_CV,N_DAY_TIME,PROD_TYPES,PARQUET_DIRECTORY
+from calibration.constants import NORMAL_EQS_FOLDER,N_CV,N_DAY_TIME,NORMAL_EQ_COMPS,PARQUET_DATA_PATH
 """
     Before selecting features using cross-validation (CV), it separates the data
     into N_CV many equal sized blocks in time and gathers normal equations from each block. 
 """
 
-def read_parquet(parquet_directory :str = PARQUET_DIRECTORY)->dask.dataframe:
+def read_parquet(PARQUET_DATA_PATH :str = PARQUET_DATA_PATH)->dask.dataframe:
     """
         Reads the whole parquet directory in the workspace.
         Args:
-            "parquet_directory"     : default defined in constants.py
+            "PARQUET_DATA_PATH"     : default defined in constants.py
     """
-    parquet_files = [os.path.join(parquet_directory, f) for f in os.listdir(parquet_directory) if f.endswith('.parquet')]
+    parquet_files = [os.path.join(PARQUET_DATA_PATH, f) for f in os.listdir(PARQUET_DATA_PATH) if f.endswith('.parquet')]
     return dataframe.read_parquet(parquet_files)
 
 def normal_eq_location(day_time_index:int,cvi:int,normal_eqt:str):
@@ -28,7 +29,7 @@ def normal_eq_location(day_time_index:int,cvi:int,normal_eqt:str):
             "cvi"        : cross validation group index
             "normal_eqt" : type of the normal equation component 
     """
-    assert normal_eqt in PROD_TYPES
+    assert normal_eqt in NORMAL_EQ_COMPS
     
     folder= os.path.join(NORMAL_EQS_FOLDER,f't{day_time_index}p{N_DAY_TIME}')
     if not os.path.exists(folder):
@@ -83,7 +84,7 @@ def compute_normal_eqs(df:dask.dataframe,cvi:int,ti:int):
         xx = x.T@x
         xy = x.T@y
         yy = y.T@y
-        normal_eqs[i] = dict(
+        normal_eqs = dict(
             xx = xx,xy = xy,yy =yy
         )
     return normal_eqs
@@ -111,19 +112,15 @@ def main():
     """
         Computes normal equations across N_CV many time blocks across the whole data.
         Each normal equation is specific to a day time index out of N_DAY_TIME parts. 
-    """
-    t_cv = int(sys.argv[1]) - 1 # distributed task index
-    cvi = t_cv % N_CV # cross validation
-    ti = (t_cv//N_CV)%N_DAY_TIME # particular part of the day
-    print(f'cross_val_index #{cvi}, day_time_index #{ti}',flush = True)
-    
+    """    
     cluster = dask.distributed.LocalCluster()
     _ = dask.distributed.Client(cluster)
     
-    df = clean_raw_data()
-    normal_eqs = compute_normal_eqs(df.copy(),cvi,ti)
-    for cvi,nrm_eq in normal_eqs.items():
-        for _type,_dask_arr in nrm_eq.items():
+    df = clean_raw_data()    
+    for cvi,ti in itertools.product(range(N_CV),range(N_DAY_TIME)):
+        print(f'cross_val_index #{cvi}, day_time_index #{ti}',flush = True)
+        normal_eqs = compute_normal_eqs(df.copy(),cvi,ti)
+        for _type,_dask_arr in normal_eqs.items():
             address = normal_eq_location(ti,cvi,_type)
             print(f'saving {address}',flush = True)
             np.save(address.replace('.npy',''),_dask_arr.compute())

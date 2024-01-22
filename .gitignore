@@ -9,3 +9,4 @@ logs
 normal_eqs
 genetic_solutions
 hyper_param_logs
+*.png

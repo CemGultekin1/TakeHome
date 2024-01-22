@@ -1,4 +1,4 @@
-from featsel.xgbhyper import HyperParamFunctor, get_bayes_optimizer,get_hyper_param_logs,XGB_PARAMS
+from calibration.xgbhyper import HyperParamFunctor, get_bayes_optimizer,get_hyper_param_logs,XGB_PARAMS
 import numpy as np
 import dask.distributed
 def main():

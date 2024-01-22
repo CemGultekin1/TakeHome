@@ -1,8 +1,8 @@
 
 import os
-from featsel.constants import N_DAY_TIME,HYPER_PARAM_LOGS
-from featsel.normaleqs import get_clean_data,pick_day_time_index
-from featsel.genetic import gen_sol_location
+from calibration.constants import N_DAY_TIME,HYPER_PARAM_LOGS
+from calibration.normaleqs import get_clean_data,pick_day_time_index
+from calibration.genetic import gen_sol_location
 import numpy as np
 import dask.distributed
 import xgboost as xgb

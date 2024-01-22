@@ -70,4 +70,27 @@ Y2|4.705e-03|3.546e-03|
 ## Reproduction
 
 ### Training
-The repo assumes '''qr_takehome''' folder contains the parquet files.
+The repo assumes that the data is present in whatever path 'calibration.constants.PARQUET_DATA_PATH' points at as parquet files. Run the following line to generate normal equation matrices and save them to 'calibration.constants.NORMAL_EQS_FOLDER' under the workspace. 
+
+```
+python calibration/normaleqs.py
+```
+
+To train the linear models, run the following line. This saves the results into 'calibration.constants.GENETIC_SOLUTIONS_FOLDER'. While it runs, it will print the best scores achieved.
+
+```
+python calibration/genetic.py
+```
+
+The repo contains the already trained weights.
+
+### Testing
+We have 'LinearModel' class under 'calibration/test' which can be used as shown below to apply to a pandas dataframe.
+
+```
+df = pd.DataFrame(...) # must contain X1-375 ad Q1-2 columns
+model = LinearModel()
+ypred = df.apply(lm,axis = 1).compute() # Y1 and Y2 columns
+ytrue = dfpart[['Y1','Y2']]
+```
+
