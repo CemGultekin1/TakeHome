@@ -7,6 +7,6 @@ imgs
 *.ext3
 logs
 normal_eqs
-genetic_solutions
+genetic_solutions/ndt4
 hyper_param_logs
 *.png
