@@ -77,7 +77,7 @@ Y1-morning: X1,X5,X9,X10,X17,X20,X26,X69,X88,X99,X103,X108,X109,X113,X118,X119,X
 Y1-afternoon: X3,X4,X40,X53,X54,X55,X56,X71,X75,X80,X87,X99,X105,X109,X111,X114,X124,X128,X135,X190,X201,X204,X239,X309,X313,X314,X315,X319,X327,X328,X337
 
 
-We further experimented with xgboost models. However, they scored around 1e-3 $R^2$ values. After using Bayesian optimization, the results didn't get better. This is reassuring as the performance is not suffering from a lack of complexity of a linear model. 
+We further experimented with xgboost models. However, they scored around 1e-3 $R^2$ values. After using Bayesian optimization, the results didn't get better. This is reassuring as the performance of the linear model is not suffering from a lack of complexity. 
 
 ## Reproducing The Results
 
