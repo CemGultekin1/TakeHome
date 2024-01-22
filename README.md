@@ -12,7 +12,7 @@ Our feature selection algorithm learns feature selection mask $m$ and regulariza
 
 $$(X_m^TX_m+\lambda I)w_{m}^* = X_m^Ty,\quad (X,y) \text{  train dataset}$$
 
-$$\text{MSE}(m,\lambda) = (w^*)X^TX(w_{m}^*) - 2(w^*)X^Ty + y^Ty,\quad (X,y) \text{ test dataset}$$
+$$\text{MSE}(m,\lambda) = 2(w^*)X^Ty + y^Ty,\quad (X,y) \text{ test dataset}$$
 
 $$\text{R}^{2}(X,y,w) = 1 - \text{MSE}(X,y,w)/||y||^2_2$$
 
