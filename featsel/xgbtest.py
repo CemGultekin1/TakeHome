@@ -1,8 +1,7 @@
-from learning.xgbhyper import HyperParamFunctor, get_bayes_optimizer,get_hyper_param_logs,XGB_PARAMS
+from featsel.xgbhyper import HyperParamFunctor, get_bayes_optimizer,get_hyper_param_logs,XGB_PARAMS
 import numpy as np
 import dask.distributed
 def main():
-    # for ti,yi in itertools.product(range(N_TIME),range(2)):
     time_index,y_index = 0,0
     logs = get_hyper_param_logs(time_index,y_index)
     opt,_ = get_bayes_optimizer(logs,XGB_PARAMS)

@@ -10,27 +10,28 @@ import dask.distributed
 import dask
 from featsel.constants import GENETIC_SOLUTIONS_FOLDER
 
-def gen_sol_location(day_time_index:int,y_index:int,n_day_time :int = N_DAY_TIME)->str:
+def gen_sol_location(day_time_index:int,y_index:int,n_day_time :int = N_DAY_TIME,makedirs_permit:bool = False)->str:
     """
     Returns the path to the genetic programming result. 
     Each model is trained on a particular portion of the day and for Y1 or Y2. 
         Args:
             "day_time_index"    : the particular partition of time out of "n_day_time" 
-            "y_index"       : 0 or 1 for Y1 or Y2 predicting model
+            "y_index"           : 0 or 1 for Y1 or Y2 predicting model
             "n_day_time"        : It has to be divisor of "N_DAY_TIME" global constant
+            "makedirs_permit"   : permit for making dirs if not existing
         Returns:
             "path"          : The absolute path to the .npy file where the weights are stored
                     The file rests under the path specified in global variable "GENETIC_SOLUTIONS_FOLDER"
     """
     assert N_DAY_TIME % n_day_time  == 0
     
-    folder = os.path.abspath(GENETIC_SOLUTIONS_FOLDER)
+    root = os.path.abspath(GENETIC_SOLUTIONS_FOLDER)
+    folder = os.path.join(root,f'ndt{n_day_time}')
     if not os.path.exists(folder):
+        if not makedirs_permit:
+            raise Exception('Needed directory doesn\'t exist')
         os.makedirs(folder)
-    if n_day_time == N_DAY_TIME:
-        filename= f't{day_time_index}_y{y_index}.npy'
-    else:
-        filename= f't{day_time_index}p{n_day_time}_y{y_index}.npy'
+    filename= f't{day_time_index}_y{y_index}.npy'
     return os.path.join(folder,filename)
     
 class CostFunctor:
@@ -335,7 +336,7 @@ def run_gen_alg(day_time_index:int,y_index:int,n_day_time:int = N_DAY_TIME):
     # fills solution with zeros
     scr,weights = cost_fn.get_full_solution(sparse_solution)
     print(f'after sparsification:\n\t time = {day_time_index}, y = {y_index}: nnz = {np.sum(np.abs(weights)>0).astype(int)}, scr = {scr}',flush = True)
-    address = gen_sol_location(day_time_index,y_index,n_day_time=n_day_time)
+    address = gen_sol_location(day_time_index,y_index,n_day_time=n_day_time,makedirs_permit=True)
     np.save(address.replace('.npy',''),weights)
     return True
 def main():

@@ -1,7 +1,8 @@
 
 import os
-from learning.prods import N_TIME, get_clean_data,pick_time_index
-from learning.genetic import gen_sol_location
+from featsel.constants import N_DAY_TIME,HYPER_PARAM_LOGS
+from featsel.normaleqs import get_clean_data,pick_day_time_index
+from featsel.genetic import gen_sol_location
 import numpy as np
 import dask.distributed
 import xgboost as xgb
@@ -12,7 +13,6 @@ from bayes_opt.logger import JSONLogger
 from bayes_opt.event import Events
 from bayes_opt.util import load_logs
 
-HYPERPARAMS_FOLDER = 'hyper_param_logs'
 XGB_PARAMS = {
     "eta" : (1e-4,5e-1),
     "gamma" : (0.1,1000),
@@ -48,14 +48,14 @@ class LogTransform:
         
 
 def get_nnz_feats(ti,yi):
-    loc = gen_sol_location(ti,yi)
+    loc = gen_sol_location(ti,yi,makedirs_permit=False)
     w = np.load(loc)
     if len(w) == 376:
         w = w[:-1]
     return np.where(np.abs(w)!=0)[0]
 
 def get_hyper_param_logs(ti,yi):
-    root = os.path.abspath(HYPERPARAMS_FOLDER)
+    root = os.path.abspath(HYPER_PARAM_LOGS)
     if not os.path.exists(root):
         os.makedirs(root)
     filename = f'hp_t{ti}_y{yi}.json'
@@ -76,7 +76,7 @@ def get_bayes_optimizer(hplogs_file,pbounds = None,random_state = 0):
     return optimizer,utility
 
 class HyperParamFunctor:
-    def __init__(self,dflt_params = {},niter = (0,1),test_run:bool = False,time_index = 0, y_index = 1,client = None,n_cv = 4):
+    def __init__(self,dflt_params = {},niter = (0,1),test_run:bool = False,day_time_index = 0, y_index = 1,client = None,n_cv = 4):
         self.client = client
         self.dflt_params = dflt_params
         self.niter = niter
@@ -84,9 +84,9 @@ class HyperParamFunctor:
             df =  get_clean_data().partitions[:4]
         else:
             df =  get_clean_data()
-        df = pick_time_index(df,time_index)
+        df = pick_day_time_index(df,day_time_index)
         ycols = ['Y1','Y2']
-        inds = get_nnz_feats(time_index,y_index)
+        inds = get_nnz_feats(day_time_index,y_index)
         xcols = np.array([c for c in df.columns if c not in ycols])
         xcols = xcols[inds]
         ycol = [ycols[y_index]]
@@ -161,16 +161,16 @@ class HyperParamFunctor:
 
 def main():
     tiyi = int(sys.argv[1]) - 1
-    ti = tiyi%N_TIME
-    yi = (tiyi//N_TIME)%2
-    print(f'time_index = {ti}, y_index = {yi}',flush = True)
+    ti = tiyi%N_DAY_TIME
+    yi = (tiyi//N_DAY_TIME)%2
+    print(f'day_time_index = {ti}, y_index = {yi}',flush = True)
     cluster = dask.distributed.LocalCluster()
     client = dask.distributed.Client(cluster)
     params = {
         "objective": "reg:squarederror",
     }
     
-    hpf = HyperParamFunctor(dflt_params = params,niter = (0,2),time_index=ti,y_index=yi,client =client,n_cv = 4)
+    hpf = HyperParamFunctor(dflt_params = params,niter = (0,2),day_time_index=ti,y_index=yi,client =client,n_cv = 4)
     hplogs = get_hyper_param_logs(ti,yi)
     transformed_bounds = LogTransform.forward(**XGB_PARAMS)
     opt,uti = get_bayes_optimizer(hplogs,transformed_bounds,0)
