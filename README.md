@@ -4,15 +4,22 @@ The approach is to use linear models for feature selection and further experimen
 ## Linear Model
 We are minimizing MSE on a subset of data defined as $(X,y)$ with each time instance occupying a row in $X$ and $y$. 
 
-<!-- We store the components of normal equations $X^TX$, $X^Ty$ and $y^Ty$ before running any optimization.  -->
+
 
 $$\text{min}_{w} ||Xw - y||_2^2 + \lambda ||w||_2^2$$
 
-Our feature selection algorithm learns feature selection mask $m$ and regularization parameter $\lambda$ jointly. For each $(m,\lambda)$ pair, we solve the normal equations on a train set and acquire an MSE value on the test set. Below use subscript to indicate the corresponding submatrix or vector.
+Our feature selection algorithm learns feature selection mask $m$ and regularization parameter $\lambda$ jointly. For each $f = (m,\lambda)$ pair, we solve the normal equations on a train set and acquire an MSE (mean squared error) value on the test set. Below use subscript to indicate the corresponding submatrix or vector.
 
-$$(X_m^TX_m+\lambda I)w_{m} = X_m^Ty,\quad (X,y) \text{  train dataset}$$
+$$(X_m^TX_m+\lambda I)w_{f} = X_m^Ty,\quad (X,y) = D_{\text{train}}$$
 
-$$\text{MSE}(m,\lambda) = w_{m}^TX_m^TX_mw_{m} -  2w_{m}^TX_m^Ty + y^Ty,\quad (X,y) \text{ test dataset}$$
+$$\text{MSE}(f) = w_{f}^TX_m^TX_mw_{f} -  2w_{f}^TX_m^Ty + y^Ty,\quad (X,y) = D_{\text{test}}$$
+
+The cross-validation is done by splitting the data into 8 approximately equal parts in time, i.e. a 1-7 split in test-train. The data is not shuffled before the split in order to avoid mixing any non-stationary nature of the data. The cost function is defined by averaging MSE on the test sets across all 8 splits. 
+
+$$
+\text{cost-fun}(f) = 1 - \sum_{(D_{\text{train}},D_{\text{test}}) \in CV} \frac{\text{MSE}(m,\lambda)}{\text{MSE}(0,\lambda)} + 
+\epsilon (|m|_1 + \lambda)
+$$
 
 
 
