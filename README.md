@@ -51,9 +51,10 @@ The genetic algorithm results are not necessarily optimal. Sometimes, we can imp
 
 
 
-0.357
 
-Attempt | #1 | #2 | #3 | #4 | #5 | #6 | #7 | #8 | #9 | #10 | #11
---- | --- | --- | --- |--- |--- |--- |--- |--- |--- |--- |---
-Seconds | 301 | 283 | 290 | 286 | 289 | 285 | 287 | 287 | 272 | 276 | 269
+
+\% $R^2$ | Morning | Afternoon | 
+--- | --- | --- | 
+Y1 | 0.357 | 283 |
+Y2 | 3.189e-03 | |
 
