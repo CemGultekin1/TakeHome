@@ -5,7 +5,7 @@ import os
 import warnings
 import dask.dataframe as dataframe
 warnings.filterwarnings("ignore")
-from featsel.constants import NORMAL_EQS_FOLDER,N_CV,N_TIME,PROD_TYPES,PARQUET_DIRECTORY
+from featsel.constants import NORMAL_EQS_FOLDER,N_CV,N_DAY_TIME,PROD_TYPES,PARQUET_DIRECTORY
 """
     Before selecting features using cross-validation (CV), it separates the data
     into N_CV many equal sized blocks in time and gathers normal equations from each block. 
@@ -20,29 +20,29 @@ def read_parquet(parquet_directory :str = PARQUET_DIRECTORY)->dask.dataframe:
     parquet_files = [os.path.join(parquet_directory, f) for f in os.listdir(parquet_directory) if f.endswith('.parquet')]
     return dataframe.read_parquet(parquet_files)
 
-def normal_eq_location(time_index:int,cvi:int,normal_eqt:str):
+def normal_eq_location(day_time_index:int,cvi:int,normal_eqt:str):
     """
         Returns the abspath to the .npy file storing the normal equations
         Args:
-            "time_index" : specifies the time partition of the day out of "N_TIME" groups
+            "day_time_index" : specifies the time partition of the day out of "N_DAY_TIME" groups
             "cvi"        : cross validation group index
             "normal_eqt" : type of the normal equation component 
     """
     assert normal_eqt in PROD_TYPES
     
-    folder= os.path.join(NORMAL_EQS_FOLDER,f't{time_index}p{N_TIME}')
+    folder= os.path.join(NORMAL_EQS_FOLDER,f't{day_time_index}p{N_DAY_TIME}')
     if not os.path.exists(folder):
         os.makedirs(folder)
     
     filename = f'cv{cvi}_{normal_eqt}.npy'
     return os.path.abspath(os.path.join(folder,filename))
-def pick_time_index(df:dask.dataframe,ti:int):
+def pick_day_time_index(df:dask.dataframe,ti:int):
     """
         Removes the rows of "df" that doesn't belong to 
         a specific day time index. 
         Args:
             "df"    : dataframe with reltime specifying relative time in the day
-            "t"     : specific index out of N_TIME 
+            "t"     : specific index out of N_DAY_TIME 
     """
     reltime = df['reltime']
     df = df[reltime < ti+0.5]
@@ -58,9 +58,9 @@ def compute_normal_eqs(df:dask.dataframe,cvi:int,ti:int):
     Args:
         "df"    : data
         "cvi"   : cross-validation index out of N_CV
-        "ti"    : day time index out of N_TIME
+        "ti"    : day time index out of N_DAY_TIME
     """
-    df = pick_time_index(df,ti)
+    df = pick_day_time_index(df,ti)
     ycols = ['Y1','Y2']
     xinds = [i for i,c in enumerate(df.columns) if c not in ycols]
     yinds = [df.columns.tolist().index(c) for c in ycols]
@@ -98,7 +98,7 @@ def clean_raw_data()->dask.dataframe:
     maxt = t.max()
     mint = t.min()
     relt = (t-mint)/(maxt-mint)
-    relt = np.floor(relt*N_TIME)
+    relt = np.floor(relt*N_DAY_TIME)
     df['reltime'] = relt
     df = df.drop(columns = ['time'])
     df = df[df['Q1'] > 0.9999]
@@ -110,12 +110,12 @@ def clean_raw_data()->dask.dataframe:
 def main():
     """
         Computes normal equations across N_CV many time blocks across the whole data.
-        Each normal equation is specific to a day time index out of N_TIME parts. 
+        Each normal equation is specific to a day time index out of N_DAY_TIME parts. 
     """
     t_cv = int(sys.argv[1]) - 1 # distributed task index
     cvi = t_cv % N_CV # cross validation
-    ti = (t_cv//N_CV)%N_TIME # particular part of the day
-    print(f'cross-val #{cvi}, time-index #{ti}',flush = True)
+    ti = (t_cv//N_CV)%N_DAY_TIME # particular part of the day
+    print(f'cross_val_index #{cvi}, day_time_index #{ti}',flush = True)
     
     cluster = dask.distributed.LocalCluster()
     _ = dask.distributed.Client(cluster)

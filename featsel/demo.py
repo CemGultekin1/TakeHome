@@ -1,4 +1,5 @@
 import itertools
+from featsel.constants import N_DAY_TIME
 from featsel.genetic import gen_sol_location
 import numpy as np
 import pandas as pd
@@ -7,13 +8,13 @@ import matplotlib.pyplot as plt
 class LinearModel:
     max_time = 57600000
     min_time = 35101000
-    def __init__(self,ny,n_time):
-        models = {(ti,yi) : gen_sol_location(ti,yi,n_time=n_time) for ti,yi in itertools.product(range(n_time),range(ny))}
+    def __init__(self,n_day_time:int = N_DAY_TIME//2):
+        models = {(ti,yi) : gen_sol_location(ti,yi,n_day_time=n_day_time,makedirs_permit=False) for ti,yi in itertools.product(range(n_time),range(ny))}
         for key,path in models.items():
             weights_reg = np.load(path)
             models[key] = weights_reg[:-1]
         self.models = models
-        self.n_time = n_time
+        self.n_day_time = n_day_time
     @staticmethod
     def _summarize(params):
         summary_str = []
@@ -54,7 +55,7 @@ class LinearModel:
         return pd.Series(data = ys, index = list(ys.keys()))
         
 def main():
-    lm = LinearModel(2,2)
+    lm = LinearModel()
     df = read_parquet()
     lm.summarize()
     return

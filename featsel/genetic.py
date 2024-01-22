@@ -5,32 +5,33 @@ import numpy as np
 import os
 from collections import defaultdict
 from geneticalgorithm import geneticalgorithm as ga
-from featsel.normaleqs import normal_eq_location,N_TIME,PROD_TYPES,N_CV
+from featsel.normaleqs import normal_eq_location,N_DAY_TIME,PROD_TYPES,N_CV
 import dask.distributed
 import dask
 from featsel.constants import GENETIC_SOLUTIONS_FOLDER
 
-def gen_sol_location(time_index:int,y_index:int,n_time :int = N_TIME)->str:
+def gen_sol_location(day_time_index:int,y_index:int,n_day_time :int = N_DAY_TIME,makedirs_permit:bool = False)->str:
     """
     Returns the path to the genetic programming result. 
     Each model is trained on a particular portion of the day and for Y1 or Y2. 
         Args:
-            "time_index"    : the particular partition of time out of "n_time" 
-            "y_index"       : 0 or 1 for Y1 or Y2 predicting model
-            "n_time"        : It has to be divisor of "N_TIME" global constant
+            "day_time_index"    : the particular partition of time out of "n_day_time" 
+            "y_index"           : 0 or 1 for Y1 or Y2 predicting model
+            "n_day_time"        : It has to be divisor of "N_DAY_TIME" global constant
+            "makedirs_permit"   : permit for making dirs if not existing
         Returns:
             "path"          : The absolute path to the .npy file where the weights are stored
                     The file rests under the path specified in global variable "GENETIC_SOLUTIONS_FOLDER"
     """
-    assert N_TIME % n_time  == 0
+    assert N_DAY_TIME % n_day_time  == 0
     
-    folder = os.path.abspath(GENETIC_SOLUTIONS_FOLDER)
+    root = os.path.abspath(GENETIC_SOLUTIONS_FOLDER)
+    folder = os.path.join(root,f'ndt{n_day_time}')
     if not os.path.exists(folder):
+        if not makedirs_permit:
+            raise Exception('Needed directory doesn\'t exist')
         os.makedirs(folder)
-    if n_time == N_TIME:
-        filename= f't{time_index}_y{y_index}.npy'
-    else:
-        filename= f't{time_index}p{n_time}_y{y_index}.npy'
+    filename= f't{day_time_index}_y{y_index}.npy'
     return os.path.join(folder,filename)
     
 class CostFunctor:
@@ -45,16 +46,16 @@ class CostFunctor:
     and report its MSE on the test set. These MSE scores are averaged and 
     an R^2 score acquired.
     """
-    def __init__(self,time_index:int = 0,n_time:int = N_TIME,y_index:int = 0,verbose :bool = True):
+    def __init__(self,day_time_index:int = 0,n_day_time:int = N_DAY_TIME,y_index:int = 0,verbose :bool = True):
         """
         Args:
-            "time_index"    : the particular partition of time out of "n_time"
-            "n_time"        : must divisor of "N_TIME"
+            "day_time_index"    : the particular partition of time out of "n_day_time"
+            "n_day_time"        : must divisor of "N_DAY_TIME"
             "y_index"       : 0 or 1 depending on Y1 or Y2
             "verbose"       : prints whenever a new best is reached during training
         """
-        assert time_index < N_TIME
-        assert time_index >= 0
+        assert day_time_index < N_DAY_TIME
+        assert day_time_index >= 0
         assert y_index >= 0
         assert y_index <= 1
         self.verbose = verbose
@@ -64,10 +65,10 @@ class CostFunctor:
         self.best =dict(r2 = -np.inf,val = None)
         self.org_dim = None
         self.y_index = y_index
-        self.time_index = time_index
-        self.n_time = n_time
-        if n_time != N_TIME:
-            assert N_TIME % n_time == 0
+        self.day_time_index = day_time_index
+        self.n_day_time = n_day_time
+        if n_day_time != N_DAY_TIME:
+            assert N_DAY_TIME % n_day_time == 0
         self.read_normal_equations()
         self.build_cross_validation_splits()   
     def get_full_solution(self,w:np.ndarray)->Tuple[float,np.ndarray]:
@@ -114,8 +115,8 @@ class CostFunctor:
         """
         normaleqs = defaultdict(lambda : defaultdict(lambda : 0))
         for cvi,pt in itertools.product(range(N_CV),PROD_TYPES):
-            ntotal = N_TIME//self.n_time
-            tis = np.arange(self.time_index*ntotal,(self.time_index+1)*ntotal)
+            ntotal = N_DAY_TIME//self.n_day_time
+            tis = np.arange(self.day_time_index*ntotal,(self.day_time_index+1)*ntotal)
             for ti in tis:
                 f = normal_eq_location(ti,cvi,pt)
                 val = np.load(f)
@@ -243,7 +244,7 @@ class CostFunctor:
             if self.verbose:
                 formatter = "{:.3e}"
                 regstr = formatter.format(b[-1])
-                print(f't{self.time_index}y{self.y_index} = {formatter.format(r2)}, nnz = {nnz}, reg = {regstr}',flush = True)
+                print(f't{self.day_time_index}y{self.y_index} = {formatter.format(r2)}, nnz = {nnz}, reg = {regstr}',flush = True)
         return -r2 + (nnz/375 + np.power(10.,reg+2))*1e-4
 
 def greedy_sparsification(ftn:CostFunctor,b:np.ndarray):
@@ -286,15 +287,15 @@ def greedy_sparsification(ftn:CostFunctor,b:np.ndarray):
     
     
 @dask.delayed
-def run_gen_alg(time_index:int,y_index:int,n_time:int = N_TIME):
+def run_gen_alg(day_time_index:int,y_index:int,n_day_time:int = N_DAY_TIME):
     """
         A dask.delayed function that runs the genetic algorithm
         for one of Y1 or Y2 and specific time of the day.
         Args:
-            "time_index"    : specifies time of the day out of "N_TIME" parts
+            "day_time_index"    : specifies time of the day out of "N_DAY_TIME" parts
             "y_index"       : 0 or 1 for Y1 or Y2
     """
-    cost_fn = CostFunctor(time_index,n_time,y_index)
+    cost_fn = CostFunctor(day_time_index,n_day_time,y_index)
     cost_fn.reduc(reltol = 1e-5) # remove degenerate features
     
     # genetic algorithm parameters
@@ -327,30 +328,30 @@ def run_gen_alg(time_index:int,y_index:int,n_time:int = N_TIME):
     
     # get the CV-score
     scr,_ = cost_fn.get_full_solution(solution)
-    print(f'\ttime = {time_index}, y = {y_index}: nnz = {np.sum(np.abs(solution)>0).astype(int)}, scr = {scr}',flush = True)
+    print(f'\ttime = {day_time_index}, y = {y_index}: nnz = {np.sum(np.abs(solution)>0).astype(int)}, scr = {scr}',flush = True)
     
     # sparsify the solution
     sparse_solution = greedy_sparsification(cost_fn,solution)
 
     # fills solution with zeros
     scr,weights = cost_fn.get_full_solution(sparse_solution)
-    print(f'after sparsification:\n\t time = {time_index}, y = {y_index}: nnz = {np.sum(np.abs(weights)>0).astype(int)}, scr = {scr}',flush = True)
-    address = gen_sol_location(time_index,y_index,n_time=n_time)
+    print(f'after sparsification:\n\t time = {day_time_index}, y = {y_index}: nnz = {np.sum(np.abs(weights)>0).astype(int)}, scr = {scr}',flush = True)
+    address = gen_sol_location(day_time_index,y_index,n_day_time=n_day_time,makedirs_permit=True)
     np.save(address.replace('.npy',''),weights)
     return True
 def main():
     ncpu = int(sys.argv[1])
     if len(sys.argv) > 2:
-        n_time = int(sys.argv[2])
+        n_day_time = int(sys.argv[2])
     else:
-        n_time = N_TIME
+        n_day_time = N_DAY_TIME
     
     cluster = dask.distributed.LocalCluster()
     client = dask.distributed.Client(cluster)
     res = []
-    for ti,yi in itertools.product(range(n_time),range(2)):
-        res.append(run_gen_alg(ti,yi,n_time = n_time))
-    client.compute(res,sync = True,scheduler='processes', num_workers=min(n_time*2,ncpu))
+    for ti,yi in itertools.product(range(n_day_time),range(2)):
+        res.append(run_gen_alg(ti,yi,n_day_time = n_day_time))
+    client.compute(res,sync = True,scheduler='processes', num_workers=min(n_day_time*2,ncpu))
     
 if __name__ == '__main__':
     main()
