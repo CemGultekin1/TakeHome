@@ -7,17 +7,29 @@ from calibration.test import LinearModel
         
 def main():
     lm = LinearModel()
-    # r2vals = []
-    # for yi,ti in itertools.product(range(2),range(2)):
-    #     cf = CostFunctor(ti,2,yi,False)
-    #     w = lm.get_params(ti,yi)
-    #     r2 = -cf(w,only_r2=True)
-    #     r2str = "{:.3e}".format(r2)
-    #     r2vals.append(r2str)
-    # table = f"Y1|" + "|".join(r2vals[:2]) + "|\n"
-    # table += f"Y2|" + "|".join(r2vals[2:]) + "|\n"
-    # print(table)
-    # return
+    r2vals = []
+    for yi,ti in itertools.product(range(2),range(2)):
+        cf = CostFunctor(ti,2,yi,False)
+        w = lm.get_params(ti,yi)
+        r2 = -cf(w,only_r2=True)
+        r2str = "{:.3e}".format(r2)
+        r2vals.append(r2str)
+    table = f"Y1|" + "|".join(r2vals[:2]) + "|\n"
+    table += f"Y2|" + "|".join(r2vals[2:]) + "|\n"
+    print(table)
+    
+    final_features = []
+    for yi,ti in itertools.product(range(2),range(2)):
+        w = lm.get_params(ti,yi)[:-1]
+        inds, = np.where(np.abs(w)>1e-9)
+        xstr = [f'X{i+1}' for i in inds]
+        xstr = ','.join(xstr)
+        tag = "morning" if ti == 0 else "afternoon"
+        xstr = f'Y{yi}-{tag}: ' + xstr
+        final_features.append(xstr)
+    print("\n\n".join(final_features))
+    return
+    lm = LinearModel()
     df = read_parquet()
 
     dfpart = df.partitions[100]
