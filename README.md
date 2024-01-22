@@ -10,9 +10,9 @@ $$\text{min}_{w} ||Xw - y||_2^2 + \lambda ||w||_2^2$$
 
 Our feature selection algorithm learns feature selection mask $m$ and regularization parameter $\lambda$ jointly. For each $f = (m,\lambda)$ pair, we solve the normal equations on a train set and acquire an MSE (mean squared error) value on the test set. Below use subscript to indicate the corresponding submatrix or vector. In order to keep $\lambda$ scale invariant we multiply it with the maximum entry of $X^TX$ on the training set.
 
-$$(X_m^TX_m+s_X\lambda I)w_{f} = X_m^Ty,\quad (X,y) = D_{\text{train}}$$
+$$(X_m^TX_m+s_X\lambda I)w_{f} = X_m^Ty$$
 
-$$s_X =\max_{i,j} (X^TX)_{i,j}$$
+$$s_X =\max_{i,j} (X^TX)_{i,j} ,\quad (X,y) = D_{\text{train}}$$
 
 $$\text{MSE}(f) = w_{f}^TX_m^TX_mw_{f} -  2w_{f}^TX_m^Ty + y^Ty,\quad (X,y) = D_{\text{test}}$$
 
