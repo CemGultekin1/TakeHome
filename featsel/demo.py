@@ -30,7 +30,8 @@ class LinearModel:
     def summarize(self,):
         summ = ""
         for key,prm in self.models.items():
-            summ += f"T({key[0]}/{self.n_time}),Y{key[1]+1}:\n\t"
+            nnz = np.sum(np.abs(prm)>0)
+            summ += f"T({key[0]}/{self.n_time}),Y{key[1]+1}: #feats = {nnz}\n\t"
             sstr = LinearModel._summarize(prm)
             summ += ",\n\t".join(sstr) + "\n"
         print(summ)
