@@ -31,7 +31,7 @@ In the cost function the MSE values are normalized with $\sum_i\text{MSE}(0,\lam
 
 ## Genetic Algorithm
 
-The cost function is minimized with [geneticalgorithm](https://github.com/rmsolgi/geneticalgorithm). 
+The above defined cost function is minimized with [geneticalgorithm](https://github.com/rmsolgi/geneticalgorithm). The algorithm starts a random pool of 1000 values of $(m,\log_{10}(\lambda))$ with $m$ taking values from $\{0,1\}$ and $\log_{10}(\lambda) \in [-12,-1]$.
 
 
 
