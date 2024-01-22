@@ -1,6 +1,6 @@
 import itertools
 from featsel.constants import N_DAY_TIME
-from featsel.genetic import gen_sol_location
+from featsel.genetic import CostFunctor, gen_sol_location
 import numpy as np
 import pandas as pd
 from featsel.normaleqs import read_parquet
@@ -9,11 +9,17 @@ class LinearModel:
     max_time = 57600000
     min_time = 35101000
     def __init__(self,n_day_time:int = N_DAY_TIME//2):
-        models = {(ti,yi) : gen_sol_location(ti,yi,n_day_time=n_day_time,makedirs_permit=False) for ti,yi in itertools.product(range(n_time),range(ny))}
-        for key,path in models.items():
+        addresses = {(ti,yi) : gen_sol_location(ti,yi,n_day_time=n_day_time,makedirs_permit=False) \
+            for ti,yi in itertools.product(range(n_day_time),range(2))}
+        
+        weights = {}
+        log10l2regs = {}
+        for key,path in addresses.items():
             weights_reg = np.load(path)
-            models[key] = weights_reg[:-1]
-        self.models = models
+            weights[key] = weights_reg[:-1]
+            log10l2regs[key] = weights_reg[-1]
+        self.weights = weights
+        self.l2regs = log10l2regs
         self.n_day_time = n_day_time
     @staticmethod
     def _summarize(params):
@@ -30,19 +36,24 @@ class LinearModel:
         return summary_str
     def summarize(self,):
         summ = ""
-        for key,prm in self.models.items():
+        for key,prm in self.weights.items():
             nnz = np.sum(np.abs(prm)>0)
             summ += f"T({key[0]}/{self.n_time}),Y{key[1]+1}: #feats = {nnz}\n\t"
             sstr = LinearModel._summarize(prm)
             summ += ",\n\t".join(sstr) + "\n"
         print(summ)
+    def get_params(self,i,j):
+        w = self.weights[(i,j)]
+        w = np.abs(w) > 1e-9
+        reg = self.l2regs[(i,j)]
+        return np.append(w,reg)
     def __call__(self,x:pd.Series):
         t = x['time']        
         reltime = (t- self.min_time)/(self.max_time - self.min_time)
         ti = int(np.floor(reltime*self.n_time))
         ti = np.maximum(np.minimum(ti,self.n_time - 1),0)
-        w0 = self.models[(ti,0)]
-        w1 = self.models[(ti,1)]
+        w0 = self.weights[(ti,0)]
+        w1 = self.weights[(ti,1)]
         qs = np.array([x[f'Q{i+1}'] for i in range(2)])
         qs = qs > 0.99999
         feats = np.array([x[f'X{i+1}'] for i in range(375)])
@@ -55,7 +66,18 @@ class LinearModel:
         return pd.Series(data = ys, index = list(ys.keys()))
         
 def main():
-    lm = LinearModel()
+    lm = LinearModel(2)
+    r2vals = []
+    for yi,ti in itertools.product(range(2),range(2)):
+        cf = CostFunctor(ti,2,yi,False)
+        w = lm.get_params(ti,yi)
+        r2 = -cf(w,only_r2=True)
+        r2str = "{:.3e}".format(r2)
+        r2vals.append(r2str)
+    table = f"Y1|" + "|".join(r2vals[:2]) + "|\n"
+    table += f"Y2|" + "|".join(r2vals[2:]) + "|\n"
+    print(table)
+    return
     df = read_parquet()
     lm.summarize()
     return

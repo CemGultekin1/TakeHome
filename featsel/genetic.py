@@ -141,6 +141,7 @@ class CostFunctor:
                 for key in keys:
                     comps[key] += self.normaleqs[j][key]
             cv_normal_eqs[i] = comps
+        self.cv_normal_eqs = {}
         self.cv_normal_eqs['train'] = cv_normal_eqs
         self.cv_normal_eqs['test'] = self.normaleqs
     def reduc(self,reltol :float = 1e-5):
@@ -203,7 +204,7 @@ class CostFunctor:
             xy = xy[b,:]
             
             w = np.linalg.solve(xx/sc + reg*np.eye(xx.shape[0]),xy/sc)
-            xx,xy,yy = [self.normaleqs['test'][i][key] for key in keys]
+            xx,xy,yy = [self.cv_normal_eqs['test'][i][key] for key in keys]
             xx = xx[b,:]
             xx = xx[:,b]
             xy = xy[b,:]
@@ -224,15 +225,16 @@ class CostFunctor:
             cv_sc2.append(yy[self.y_index])
             
         return np.array(cv_mse),np.array(cv_sc2)
-    def __call__(self,b:np.ndarray)->float:
+    def __call__(self,b:np.ndarray,only_r2:bool = False)->float:
         """
             Returns a cost score. This is negative of CV r-square value. 
             The genetic algorithm minimizes cost - maximizes r2.
             Args:
                 "b" : feature selection pattern and a L2-regularization coeff
+                "only_r2" : if True only -r2 without penalties added
             Returns:
-                "-r2": CV-averaged MSE scores turned into r-square value
-                    -(1 - AVG_CV_MSE/SC2)
+                "cost": CV-averaged MSE scores turned into r-square value
+                    cost = -r2 + L2 and sparsity penalties
         """ 
         nnz = int(np.sum(b[:-1]))
         reg = b[-1]
@@ -245,6 +247,8 @@ class CostFunctor:
                 formatter = "{:.3e}"
                 regstr = formatter.format(b[-1])
                 print(f't{self.day_time_index}y{self.y_index} = {formatter.format(r2)}, nnz = {nnz}, reg = {regstr}',flush = True)
+        if only_r2:
+            return -r2
         return -r2 + (nnz/375 + np.power(10.,reg+2))*1e-4
 
 def greedy_sparsification(ftn:CostFunctor,b:np.ndarray):
