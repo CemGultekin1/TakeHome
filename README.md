@@ -29,7 +29,9 @@ $$
 
 In the cost function the MSE values are normalized with $\sum_i\text{MSE}(0,\lambda;i)$ which is a constant equal to $y^Ty$, the total energy across the whole target values. The second part of the cost function is to promote reduction in number of parameters and L2-regularization. The value of $\epsilon$ is chosen as $10^{-4}$ so that this part only runs in effect when MSE is no longer decreasing significantly.
 
-The cost function is minimized with [geneticalgorithm](https://github.com/rmsolgi/geneticalgorithm).
+## Genetic Algorithm
+
+The cost function is minimized with [geneticalgorithm](https://github.com/rmsolgi/geneticalgorithm). 
 
 
 
