@@ -53,8 +53,9 @@ The genetic algorithm results are not necessarily optimal. Sometimes, we can imp
 
 
 
-\% $R^2$ | Morning | Afternoon | 
+ $R^2$  (\%) | Morning | Afternoon | 
 --- | --- | --- | 
-Y1 | 0.357 | 283 |
-Y2 | 3.189e-03 | |
+Y1|4.266e-03|4.916e-03|
+--- | --- | --- | 
+Y2|4.705e-03|3.546e-03|
 
